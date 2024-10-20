@@ -1,6 +1,6 @@
 
 import type { DocsThemeConfig } from 'nextra-theme-docs'
-import { LocaleSwitch, useConfig, ThemeSwitch } from 'nextra-theme-docs'
+import { useConfig, ThemeSwitch } from 'nextra-theme-docs'
 import Footer from '@components/footer'
 import { LogoTitle } from '@components/logoImage'
 
@@ -9,7 +9,7 @@ const config: DocsThemeConfig = {
 
     
     return (
-      <a className='_flex _items-center hover:_opacity-75 ltr:_mr-auto rtl:_ml-auto' href={'/en'}>
+      <a className='_flex _items-center hover:_opacity-75 ltr:_mr-auto rtl:_ml-auto' href={'/'}>
         <span className='logo'><LogoTitle /> Yaseen</span>
       </a>
     )
@@ -65,7 +65,6 @@ const config: DocsThemeConfig = {
       return (
         <>
           {ThemeSwitch({ lite: true, className: 'button-switch theme-switch' })}
-          {LocaleSwitch({ lite: true, className: 'button-switch' })}
         </>
       )
     }

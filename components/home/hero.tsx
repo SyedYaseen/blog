@@ -34,7 +34,7 @@ export default function Hero() {
         </p>
         <p className={styles.subtitle + ' text-sm'}>{subtitleTwo}</p>
         <div className={styles.actions}>
-          <Link className={styles.cta} href={`$en/docs/start`}>
+          <Link className={styles.cta} href={`$docs`}>
             {cta} <span>→</span>
           </Link>
           <Link
