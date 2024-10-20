@@ -1,16 +1,16 @@
-
 import type { DocsThemeConfig } from 'nextra-theme-docs'
 import { useConfig, ThemeSwitch } from 'nextra-theme-docs'
 import Footer from '@components/footer'
 import { LogoTitle } from '@components/logoImage'
 
 const config: DocsThemeConfig = {
-  logo: () => {
-
-    
+  search: {
+    placeholder: "Search blog"
+  },
+  logo: () => {    
     return (
       <a className='hover:_opacity-75 ltr:_mr-auto rtl:_ml-auto' href={'/'}>
-        <span className='logo'><LogoTitle /></span>
+        <span className='logo'><LogoTitle /> </span>
       </a>
     )
   },
@@ -39,7 +39,7 @@ const config: DocsThemeConfig = {
           type="image/png"
           media="(prefers-color-scheme: dark)"
         />
-        <meta name="apple-mobile-web-app-title" content="gRPCity" />
+        <meta name="apple-mobile-web-app-title" content="CompileAndCry" />
       </>
     )
   },
@@ -73,7 +73,7 @@ const config: DocsThemeConfig = {
     key: '2.0-release',
     content: (
       <a href="https://github.com/syedyaseen" target="_blank">
-        🎉 Hey you made it! Try not to steal too much from here
+        🎉 Hey you made it!!!
       </a>
     )
   }
