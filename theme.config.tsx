@@ -9,8 +9,8 @@ const config: DocsThemeConfig = {
 
     
     return (
-      <a className='_flex _items-center hover:_opacity-75 ltr:_mr-auto rtl:_ml-auto' href={'/'}>
-        <span className='logo'><LogoTitle /> Yaseen</span>
+      <a className='hover:_opacity-75 ltr:_mr-auto rtl:_ml-auto' href={'/'}>
+        <span className='logo'><LogoTitle /></span>
       </a>
     )
   },
@@ -23,9 +23,7 @@ const config: DocsThemeConfig = {
     const config = useConfig()
  
 
-    const description =
-      config.frontMatter.description ||
-      'gPRCity is a simple, easy-to-use, and advanced gRPC microservices library based on Node.js.'
+    const description = config.frontMatter.description 
     const title = config.title
 
     return (
@@ -34,10 +32,10 @@ const config: DocsThemeConfig = {
         <meta property="og:title" content={title} />
         <meta name="description" content={description} />
         <meta property="og:description" content={description} />
-        <link rel="icon" href="/img/favicon.png" type="image/png" />
+        <link rel="icon" href="/img/favicon.ico" type="image/png" />
         <link
           rel="icon"
-          href="/img/favicon-dark.png"
+          href="/img/favicon-dark.ico"
           type="image/png"
           media="(prefers-color-scheme: dark)"
         />
@@ -47,8 +45,7 @@ const config: DocsThemeConfig = {
   },
   footer: {
     content: () => {
-      
-
+    
       return (
         <>
           <Footer/>
