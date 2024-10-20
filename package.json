@@ -1,0 +1,34 @@
+{
+  "name": "Yaseen Blog",
+  "version": "1.0.0",
+  "description": "Blog",
+  "author": "Syed Yaseen",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "export": "next build && next export"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syedyaseen/blog.git"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.2.2",
+    "@vercel/speed-insights": "^1.0.10",
+    "next": "^14.1.1",
+    "nextra": "3.0.0-alpha.22",
+    "nextra-theme-docs": "3.0.0-alpha.22",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.24",
+    "@types/react": "^18.2.61",
+    "autoprefixer": "^10.4.18",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  }
+}
