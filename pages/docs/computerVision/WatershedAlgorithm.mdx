@@ -1,0 +1,53 @@
+import { Callout, Cards, Steps, OptionTable, Tabs } from "nextra/components"
+
+# Watershed Algorithm
+
+This is a really cool image segementation algo. Personally, I might have called this something cool like `DamBuilder` or `CraterMaker`.
+
+It considers the image as a topography map, like the map which shows us the elevation, mountains and such, then it gets us to imagine that its raining and water fills up in the entire map (`Ark Algorithm`, Get it? because of Noah's ark). We have reached the boudary of the valley when the water is filled and we touch the nearby valley's boundary.
+
+## What is this algo for?
+
+This helps segment images between foreground and background and it especially useful when there are multiple objects in the image.
+
+## How does it work?
+
+1. Pre-process the image through Binarization, Inverse Binarization.
+1. Create `markers`. Markers are regions in the image which are like core or a center of an image a.k.a lowest point of the valley. E.g. the centre of a coin.
+1. Then we start filling the image from the markers.
+1. Once we come in contact with the adjacent boundary, filling is complete and we've found the boundary of our image.
+
+<Callout type="info" emoji="️🧂">
+  C++ examples below, full python example at the end.
+</Callout>
+
+<Steps>
+
+### Pre-process
+
+- Apply Otsu Binarization.
+- Invert the result, we want the centre of our coins in white.
+
+```cpp
+Mat otsuOut;
+threshold(src, otsuOut, 0.0, 255.0, THRESH_OTSU);
+threshold(otsuOut, otsuOut, 0.0, 255.0, THRESH_BINARY_INV);
+```
+
+### Pre-process - 2
+
+```cpp
+Mat otsuOut;
+threshold(src, otsuOut, 0.0, 255.0, THRESH_OTSU);
+threshold(otsuOut, otsuOut, 0.0, 255.0, THRESH_BINARY_INV);
+```
+
+### Pre-process - 3
+
+```cpp
+Mat otsuOut;
+threshold(src, otsuOut, 0.0, 255.0, THRESH_OTSU);
+threshold(otsuOut, otsuOut, 0.0, 255.0, THRESH_BINARY_INV);
+```
+
+</Steps>
