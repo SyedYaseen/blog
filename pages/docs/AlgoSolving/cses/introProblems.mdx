@@ -138,3 +138,49 @@ int main()
 ```
 
 <br />
+
+## Repetition
+### Problem statement
+1. Find the maximum continuous occurrence of a character in the sring
+
+### Intuition
+1. Two pointers approach (i and j)
+2. If val under pointer i is same as j, inc j
+	- If max value is less than the current distance between i and j, set max to new distance value
+4. If the j character is different, move i to location of j
+5. Continue until j reaches the end of the string
+
+
+## Increasing Array
+### Problem Statement
+1. We are given n numbers and max value of numbers is n.
+2. We need to modify the list of numbers so that the next number is greater than or equal to the previous number
+3. Each "move" can increment one number by 1.
+4. Result is the minimum number of moves required.
+
+### Intuition
+1. Iterate the list, 
+2. If the max value is less than the current max, update max value to new higher value
+3. If a number is less than the max value, add the difference to the count variable
+
+
+## Permutations
+### Problem Statement
+1. We are given a number n
+2. We need output numbers 1 to n, so that none of them are next to a number that's +1 or -1 of the current number.
+3. If no solution is possible, output 'NO SOLUTION'
+
+### Intuition
+** Common edge cases**
+1. Answer to n = 1 is 1. Since that's suffices the prob statement
+2. Numbers 2 and 3 have no solution, since they can be rearranged in any way that satisfies the requirements.
+
+** Approach 1 **
+1. Iterate from n to 1
+2. Print only even numbers first
+3. Then print odd numbers
+
+** Approach 2 **
+1. Iterate from n to 1
+2. Keep track of last number that was output
+3. 
