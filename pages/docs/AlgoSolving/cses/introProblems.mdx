@@ -1,0 +1,140 @@
+import { Callout, Cards, Steps, OptionTable, Tabs } from "nextra/components"
+
+# CSES Introduction problem set's answers
+
+## <a href="https://cses.fi/problemset/task/1068" target="_blank">Weird Algorithm</a>
+
+### Problem statement
+
+1. The goal is to reach 1 when given a positive int n and output all numbers along the way.
+2. The algo to reach 1 is
+   - if n is even divide by 2
+   - if n is odd multiply by 2 and add 1
+
+E.g. n = 3, output = 3 --> 10 --> 5 --> 16 --> 8 --> --> 4 --> 2 --> 1
+
+### Intuition
+
+This is quite a simple problem, we could easily use regular multiplication and division to solve this, we can also use `bitwise operators`.
+For those who aren't familiar with bitwise operators, there are the following operators we will for this problem.
+
+1. Left shift `<< n` multiplies a number by 2, `n` times
+2. Right shift `>> n` dividies number by 2, `n` times
+3. Bitwise and `x & y`. If the bit values of both x and y are 1, then the output is 1 else 0.
+
+```cpp
+int x = 0b10;
+int y = 0b1;
+int z = x & y; // z = 0;
+```
+
+### Answer
+
+```cpp
+int main()
+{
+    setIO();
+
+    unsigned long long int n, a;
+    cin >> n;
+
+    cout << n << " ";
+
+    while (n != 0b1) // Run until n is not 1
+    {
+        if (n == 0)
+            break;
+        if (n & 0b1) // Check if last bit is a 1. => Odd number
+        {
+            a = n; // Keep a copy of n
+            n <<= 1; // Multiply by 2
+            n += a + 1; // Add it n (a) one more to multiply by 3 and add 1
+        }
+        else
+        {
+            n >>= 1; // Divide by 2 once if n is even
+        }
+        cout << n << " ";
+    }
+}
+
+```
+
+<br />
+
+## <a href="https://cses.fi/problemset/task/1083" target="_blank">Missing Number</a>
+
+### Problem statement
+
+1. Input 1: Given a number n
+2. Input 2: All numbers from 1 to n except one number
+3. We need to find that number
+
+### Intuition
+
+**Approach 1:**
+
+1. Get all numbers and sort them
+2. Iterate through sorted numbers. If any `number + 1` isn't equal to the next number, `number + 1` is the answer
+
+**Approach 2:**
+
+1. This is a mathematical approach.
+2. Sum of n numbers is: n \* (n + 1) / 2.
+3. When we get inputs from file one by one we subtract it from the sum.
+4. The sum we are left at the end is the answer.
+
+### Answer
+
+**Approach 1:**
+Sort and Iterate
+
+```cpp
+int main()
+{
+    unsigned int n, a;
+    vector<unsigned int> v;
+    cin >> n;
+
+    while (cin >> a)
+        v.push_back(a);
+    sort(v.begin(), v.end());
+    if (v[0] != 1)
+        cout << 1;
+    else
+    {
+
+        for (unsigned int i = 0; i < v.size(); i++)
+        {
+            if (v[i] + 1 != v[i + 1])
+            {
+                cout << v[i] + 1;
+                break;
+            }
+        }
+    }
+
+```
+
+**Approach 2:**
+Sum n numbers and subtract inputs
+
+```cpp
+int main()
+{
+    unsigned long long n, a;
+    cin >> n;
+    unsigned long long sum;
+    sum = n * (n + 1);
+    sum >>= 1;
+
+    while (cin >> a)
+    {
+        sum -= a;
+    }
+
+    cout << sum;
+}
+```
+
+<br />
