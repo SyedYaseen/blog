@@ -1,31 +1,35 @@
 import { Callout, Cards, Steps, OptionTable, Tabs } from "nextra/components"
+import Image from "next/image"
 
 # Watershed Algorithm
 
-This is a really cool image segementation algo. Personally, I might have called this something cool like `DamBuilder` or `CraterMaker`.
+This is a really cool image segementation algo. This helps segment images between foreground and background and it especially useful when there are multiple objects in the image.
 
-It considers the image as a topography map, like the map which shows us the elevation, mountains and such, then it gets us to imagine that its raining and water fills up in the entire map (`Ark Algorithm`, Get it? because of Noah's ark). We have reached the boudary of the valley when the water is filled and we touch the nearby valley's boundary.
-
-## What is this algo for?
-
-This helps segment images between foreground and background and it especially useful when there are multiple objects in the image.
+It considers the image as a topography map, like the map which shows us the elevation, mountains and such, then we imagine that its raining and water fills up in the entire map. When the water is filled and we touch the nearby valley's boundary, it means that we have reached the boundary of the current item.
 
 ## How does it work?
 
-1. Pre-process the image through Binarization, Inverse Binarization.
-1. Create `markers`. Markers are regions in the image which are like core or a center of an image a.k.a lowest point of the valley. E.g. the centre of a coin.
+1. Pre-process the image through Binarization.
+1. Find the sure background, sure foreground and the region inbetween (unknown).
+1. Now firgure out which parts of the unknown belong to which object on the foreground.
+1. Label the various entities in the sure foreground.
+1. These labels (Markers) are regions in the image which is the center of that object and there can be many labels. E.g. the centre of a coin.
 1. Then we start filling the image from the markers.
-1. Once we come in contact with the adjacent boundary, filling is complete and we've found the boundary of our image.
+1. Once we come in contact with the adjacent marker, filling is complete and we've found the boundar for that marker.
+1. Continue until all markers are complete.
 
-<Callout type="info" emoji="️🧂">
-  C++ examples below, full python example at the end.
-</Callout>
+Lets look at these steps in detail.
 
 <Steps>
 
 ### Pre-process
 
-- Apply Otsu Binarization.
+- Apply Otsu Binarization to find the optimal threshold value.
+  - OTSU works by creating a histogram
+  - Iterate through the histogram to test different threshold values.
+  - Each chosen threshold value creates two groups
+  - Then the algo determines optimal threshold when
+    the difference in intensity values are very different between the two groups (High between class variance) or when the difference in intensities are the lowest within class (Low in class variance)
 - Invert the result, we want the centre of our coins in white.
 
 ```cpp
@@ -34,20 +38,181 @@ threshold(src, otsuOut, 0.0, 255.0, THRESH_OTSU);
 threshold(otsuOut, otsuOut, 0.0, 255.0, THRESH_BINARY_INV);
 ```
 
-### Pre-process - 2
+_OTSU Output_
+
+<Image src="/img/opencv/watershed/otsuOut.png" height={200} width={200} />
+
+### Find sure background
+
+- Remove any noise on the image by performing a `open` morphological operation. It applies erosion and then dilation on the image.
+- Then we dilate the image for a few iterations, to make the binary image's edge very wide, so anything beyond the dilation is sure to be the background.
 
 ```cpp
-Mat otsuOut;
-threshold(src, otsuOut, 0.0, 255.0, THRESH_OTSU);
-threshold(otsuOut, otsuOut, 0.0, 255.0, THRESH_BINARY_INV);
+Mat struc = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
+morphologyEx(otsuOut, openOut, MORPH_OPEN, struc);
+dilate(openOut, bg, struc, Point(-1, -1), 3);
 ```
 
-### Pre-process - 3
+_Sure Background_
+
+<Image src="/img/opencv/watershed/SureBG.png" height={200} width={200} />
+
+### Find sure foreground
+
+- To find the sure foreground, we apply a `distance transform` on the dilated image.
+
+  - Distance transform finds the distance between a foreground pixel and the nearest background pixel (i.e) find the closest dark pixel for each bright pixel in the image.
+  - The commonly used math underneath is the Euclidean distance.
+  - Euclidean distance:
+
+  ```math
+    dist(p,q) = (q1 - p1)^2 + (q2 - p2)^2
+  ```
+
+  <Image
+    src="/img/opencv/watershed/euclideanDistance.jpg"
+    height={200}
+    width={200}
+  />
+
+  - Once we find all the distances, we pick only the top 70% or the 50% of the items closest to the centre, this way we know that these items are sure to be the foreground.
 
 ```cpp
-Mat otsuOut;
-threshold(src, otsuOut, 0.0, 255.0, THRESH_OTSU);
-threshold(otsuOut, otsuOut, 0.0, 255.0, THRESH_BINARY_INV);
+distanceTransform(openOut, disTrans, DIST_L2, 3, CV_8U);
+
+double minVal, maxVal;
+minMaxLoc(disTrans, &minVal, &maxVal);
+threshold(disTrans, fg, 0.7 * maxVal, 255.0, THRESH_BINARY);
 ```
+
+_Sure Foreground_
+
+<Image src="/img/opencv/watershed/Distrans.png" height={200} width={200} />
+
+### Determine "Unknown" region
+
+- This is the region between the sure background and foreground.
+- We need to figure out which object in foreground it belongs to.
+- We will use this for our markers in the next step.
+
+```cpp
+subtract(bg, fg,  unknown);
+```
+
+_Unknown output_
+
+<Image src="/img/opencv/watershed/Unknown.png" height={200} width={200} />
+
+### Label objects in foreground
+
+- Label the different objects present in the foreground using the connectedComponents method.
+- Next assign the label 0 to background
+  - So increment all values in marker by 1. Now no markers will be labelled 0.
+  - We know the pixel locations of the "unknown" pixels from the 'unknown' matrix.
+  - In the marker mat, we set these unknows pixel locations to 0.
+- This is one of the inputs to the watershed Algorithm.
+
+```cpp
+connectedComponents(fg, markers);
+add(markers, cv::Scalar(1), markers);
+markers.setTo(0, unknown == 255);
+```
+
+_Labelled Markers_
+
+<Image src="/img/opencv/watershed/Markers.png" height={200} width={200} />
+
+### Watershed Algorithm
+
+Finally, now lets apply the markers matrix to the watershed Algorithm. In a nutshell, there are two steps involved:
+
+- Expand the markers regions:
+  For each of the markers, E.g. Label 2, any unknown pixel around it gets marked with the marker's label.
+- Recognize the border and stop the expansion of the border:
+  If the neighbour is a label (E.g. 2) of another marker (E.g. 3), this means that we are at a border and our current marker needs to stop expanding and we need to mark this as a border.
+
+```cpp
+watershed(img, markers);
+```
+
+_Watershed Output_
+
+<Image src="/img/opencv/watershed/watershed.png" height={200} width={200} />
 
 </Steps>
+
+## Code
+
+```cpp
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/core/core.hpp"
+#include "opencv2/opencv.hpp"
+#include <iostream>
+using namespace std;
+using namespace cv;
+
+int main() {
+
+	Mat src = imread("./Images/touchCoins.jpg", 0);
+	imshow("src", src);
+
+	Mat otsuOut;
+	threshold(src, otsuOut, 0.0, 255.0, THRESH_OTSU);
+	threshold(otsuOut, otsuOut, 0.0, 255.0, THRESH_BINARY_INV);
+	imshow("otsuOut", otsuOut);
+
+	Mat fg;
+	Mat bg;
+	Mat unknown;
+
+	Mat openOut;
+	Mat disTrans;
+	Mat struc = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
+	morphologyEx(otsuOut, openOut, MORPH_OPEN, struc);
+	dilate(openOut, bg, struc, Point(-1, -1), 3);
+	imshow("bg Dilated", bg);
+
+	distanceTransform(openOut, disTrans, DIST_L2, 3, CV_8U);
+
+	double minVal, maxVal;
+	minMaxLoc(disTrans, &minVal, &maxVal);
+	threshold(disTrans, fg, 0.7 * maxVal, 255.0, THRESH_BINARY);
+	imshow("fg (DisTrans)", fg);
+
+	normalize(fg, fg, 0, 255, NORM_MINMAX, CV_8UC1);
+
+	subtract(bg, fg,  unknown);
+	imshow("unknown (bg - fg)", unknown);
+
+	Mat markers;
+	Mat seeMyLabels;
+	connectedComponents(fg, markers);
+	normalize(markers, markers, 0, 255, NORM_MINMAX, CV_32SC1);
+
+	normalize(markers, seeMyLabels, 0, 255, NORM_MINMAX, CV_8U);
+	imshow("Labels before + 1", seeMyLabels);
+
+	cv::add(markers, cv::Scalar(1), markers);
+	markers.setTo(0, unknown == 255);
+
+
+	Mat img = imread("./Images/touchCoins.jpg");
+	if (img.empty()) {
+		std::cerr << "Error loading image" << std::endl;
+		return -1;
+	}
+	if (img.channels() == 1) {
+		cvtColor(img, img, COLOR_GRAY2BGR);  // Ensure it's in color
+	}
+
+	watershed(img, markers);
+	normalize(markers, seeMyLabels, 0, 255, NORM_MINMAX, CV_8U);
+
+
+
+	imshow("Watershed", seeMyLabels);
+	waitKey(0);
+	return 0;
+}
+```
