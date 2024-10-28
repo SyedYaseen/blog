@@ -7,8 +7,17 @@ export default {
       layout: "raw",
     },
   },
+
   docs: {
     type: "page",
     title: "Blog",
+  },
+  resume: {
+    title: "CV",
+    type: "page",
+
+    theme: {
+      layout: "raw",
+    },
   },
 }
