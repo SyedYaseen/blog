@@ -1,0 +1,118 @@
+# Install Coolify on a Local Ubuntu (or other) old laptop/server
+
+Quick install:
+Before install `sudo su` to install as root
+
+```
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash
+```
+
+# After install
+
+### User creation
+
+```
+sudo adduser myadmin
+sudo usermod -aG sudo myadmin
+```
+
+### Disable pwd auth
+
+```
+sudo nano /etc/ssh/sshd_config
+```
+
+Set the following flags to
+
+<ul>
+  <li>PermitRootLogin prohibit-password</li>
+  <li>PasswordAuthentication no</li>
+  <li>PermitEmptyPasswords no</li>
+</ul>
+
+### Firewall Hardening
+
+```
+sudo ufw reset
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# Allow only SSH, HTTP, HTTPS
+sudo ufw allow OpenSSH
+sudo ufw allow 80,443/tcp
+
+# Optional: limit SSH brute force
+sudo ufw limit OpenSSH
+
+sudo ufw enable
+sudo ufw status verbose
+```
+
+This is how it would look like
+Firewall is active and enabled on system startup
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To Action From
+
+---
+
+22/tcp (OpenSSH) LIMIT IN Anywhere <br/>
+80,443/tcp ALLOW IN Anywhere <br/>
+22/tcp (OpenSSH (v6)) LIMIT IN Anywhere (v6) <br/>
+80,443/tcp (v6) ALLOW IN Anywhere (v6) <br/>
+
+root@poochi:/home/poochi# sudo ufw status <br/>
+Status: active <br/>
+
+To Action From <br/>
+
+--- <br/>
+
+OpenSSH LIMIT Anywhere <br/>
+80,443/tcp ALLOW Anywhere <br/>
+OpenSSH (v6) LIMIT Anywhere (v6) <br/>
+80,443/tcp (v6) ALLOW Anywhere (v6) <br/>
+
+## CloudFlare tunnel
+
+- Attach domain to Cloudflare by setting nameserver (NS) to cloudflare nameservers
+- Create a tunnel
+  - CloudFlare home -> Zero Trust -> Networks -> Tunnels
+  - Create Tunnel -> Copy token
+  - Public Host Name -> \*.domainname.com -> service: HTTP://localhost:80
+  - Edit DNS -> NAME = \*; CNAME = tunnelid.cfargotunnel.com
+- Coolify cloudflared service
+  - Create cloudflared service - set token as env
+  - Server -> Wildcard Domain -> https://domainname.com (needs to be https)
+  - Settings -> Instance Settings -> Instance's Domain -> coolify.domainname.com
+  - Other services -> domain -> http://anysubdomain.domainname.com (needs to be http)
+  - Services might need their port exposed for local (same network) service access. Not necessary for tunnel access (tested)
+
+## Self hosted docker registry
+
+- pwd generator `sudo apt install apache2-utils`
+- Create password for docker login mkdir -p ./auth
+  `htpasswd -Bbn username 'password' > ./auth/registry.password`
+- Mount on docker compose:
+
+```
+    volumes:
+      -
+        type: bind
+        source: /data/coolify/auth/registry.password
+        target: /auth/registry.password
+        isDirectory: false
+```
+
+- `docker login localhost:5000`
+- `docker tag name:latest localhost:5000/name:latest`
+- `docker push docker tag my-app:latest localhost:5000/my-app:latest`
+
+Resources and links:
+
+- https://www.youtube.com/watch?v=cg28Ztt4-os&t=2033s
+- https://coolify.io/docs/knowledge-base/cloudflare/tunnels/all-resource#_3-setup-cloudflare-tunnel-on-coolify
+- https://coolify.io/docs/knowledge-base/server/openssh

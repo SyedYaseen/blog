@@ -1,0 +1,30 @@
+### Install
+
+mkdir -p ~/miniconda3
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+rm ~/miniconda3/miniconda.sh
+
+### Create venv
+
+mkdir -p ~/conda-envs
+cd ~/conda-envs
+
+conda create --prefix ./ml python=3.10
+~/conda-envs/ml/
+conda activate ~/conda-envs/ml
+conda deactivate
+
+Restore db:
+/usr/local/pgsql-15/pg_restore \
+ --host "postgres" \
+ --port "5432" \
+ --username "root" \
+ --dbname "OdysCars" \
+ --create \
+ --verbose \
+ "/var/lib/backup/Odys.tar"
+
+pip freeze > requirements.txt
+pip install -r requirements.txt
+
