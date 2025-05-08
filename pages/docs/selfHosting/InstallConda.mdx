@@ -15,7 +15,9 @@ conda create --prefix ./ml python=3.10
 conda activate ~/conda-envs/ml
 conda deactivate
 
+
 Restore db:
+docker cp Odys.tar postgres:/home
 /usr/local/pgsql-15/pg_restore \
  --host "postgres" \
  --port "5432" \
@@ -28,3 +30,6 @@ Restore db:
 pip freeze > requirements.txt
 pip install -r requirements.txt
 
+If mounting a folder, give permission to create folders
+sudo chown -R 5050:5050 /home/yaseen/Projects/pg/pgadmin_data
+sudo chmod -R 700 /home/yaseen/Projects/pg/pgadmin_data
