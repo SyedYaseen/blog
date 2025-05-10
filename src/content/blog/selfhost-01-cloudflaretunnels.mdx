@@ -1,0 +1,39 @@
+---
+title: "Serve apps using Cloudflare tunnels"
+description: "Process to setup cloudflare tunnels on coolify to serve apps without exposing ports or port forwarding"
+date: "2025-05-09"
+tags: ["coolify", "selfhost", "linux"]
+---
+
+## Why cloudflare tunnel?
+I used cloudflare tunnel to setup a staging env for my apps using my old laptop. CF tunnels has the following benefits
+- No need to expose ports other than 80 and 443. So its secure.
+- No port forwardign in modem to expose ports to internet. So home network is safe.
+- Can setup SSL certs for free using cloudflare
+
+## Setup in dashboard
+- Attach domain to Cloudflare by setting nameserver (NS) to cloudflare nameservers
+- Create a tunnel
+    - CloudFlare home -> Zero Trust -> Networks -> Tunnels
+    - Create Tunnel -> Copy `token` (used in next step)
+    - Tunnel -> Public Host Name ->  Add public hostname
+    - *.domainname.com -> service: HTTPS://localhost:443 (Wildcard sub domain)
+    - Additional application settings -> TLS -> origin server name -> *.domainname.com
+    - This will automatically add an entry in DNS table, 
+    - If not add it manually, NAME = *; CNAME = tunnelId.cfargotunnel.com
+    - Repeat steps for base domain and other domains
+    - Multiple domains can be added in same tunnel
+
+- Coolify cloudflared service
+    - Create cloudflared service - set `token` as env
+    - Server -> Wildcard Domain -> https://domainname.com (needs to be https)
+    - Settings -> Instance Settings -> Instance's Domain -> coolify.domainname.com
+    - Other services -> domain -> https://anysubdomain.domainname.com
+    - Services might need their port exposed for local (same network) service access. Not necessary for tunnel access
+
+
+
+## Resources and links
+- https://www.youtube.com/watch?v=cg28Ztt4-os&t=2033s
+- https://coolify.io/docs/knowledge-base/cloudflare/tunnels all-resource#_3-setup-cloudflare-tunnel-on-coolify
+- https://coolify.io/docs/knowledge-base/server/openssh

@@ -1,0 +1,70 @@
+---
+title: "Coolify setup on Old Laptop"
+description: "Commands to setup coolify on a old laptop or a VPS"
+date: "2025-05-09"
+tags: ["coolify", "selfhost", "linux"]
+---
+
+## Install Coolify on a Local Ubuntu (or other) old laptop/server
+
+### Installation
+Install as root with `sudo su`. Use `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash`
+to start install
+
+[Serve your apps on the internet securely using cloudflare tunnels](/blog/selfhost-01-cloudflaretunnels)
+
+### User creation
+Add a new user that has root access
+``` sh
+sudo adduser myadmin
+sudo usermod -aG sudo myadmin
+```
+## Secure the VPS/ Laptop
+
+### Disable pwd auth
+Edit /etc/ssh/sshd_config
+
+`sudo nano /etc/ssh/sshd_config`
+
+Set the following flags on the file
+
+- PermitRootLogin prohibit-password
+- PasswordAuthentication no
+- PermitEmptyPasswords no
+
+### Firewall Hardening
+optional since it caused some issues when I first set it up
+```
+sudo ufw reset
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+```
+
+#### Allow only SSH, HTTP, HTTPS
+```
+sudo ufw allow OpenSSH
+sudo ufw allow 80,443/tcp
+```
+
+#### Optional: limit SSH brute force
+`sudo ufw limit OpenSSH`
+
+#### Save changes
+```
+sudo ufw enable
+sudo ufw status verbose
+```
+
+#### Sample firewall after changes
+This is how it would look like Firewall is active and enabled on system startup Status: active Logging: on (low) Default: deny (incoming), allow (outgoing), deny (routed) New profiles: skip
+
+To Action From
+
+- 22/tcp (OpenSSH) LIMIT IN Anywhere
+- 80,443/tcp ALLOW IN Anywhere
+- 22/tcp (OpenSSH (v6)) LIMIT IN Anywhere (v6)
+- 80,443/tcp (v6) ALLOW IN Anywhere (v6)
+
+---
+
+

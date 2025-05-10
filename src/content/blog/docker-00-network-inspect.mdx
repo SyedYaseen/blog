@@ -1,0 +1,29 @@
+---
+title: "Docker network debug"
+description: "Quick overview and useful commands to setup python env on an ubuntu machine"
+date: "2025-05-09"
+tags: ["docker", "debugging"]
+---
+
+## Docker network inspect
+When debugging Docker containers, I needed to verify whether each container was connected to the correct network(s). 
+This was important because network misconfiguration can cause containers to fail to communicate with each other, 
+especially in multi-container setups (e.g., when using docker-compose or custom user-defined bridge networks).
+
+To do this efficiently across all networks, I used the following command:
+
+```
+for net in $(docker network ls --format '{{.ID}}'); do
+    echo "Network: $net"
+    docker network inspect "$net" | jq -r '.[0].Containers[]?.Name'
+    echo ""
+done
+```
+
+- Lists all Docker network IDs.
+- For each network, runs docker network inspect to see which containers are connected.
+- Uses jq -r to extract and print only the container names in raw text format (no quotes).
+- Groups the output by network, making it easy to scan for container membership.
+
+This helped me quickly identify whether a specific container was attached to the expected network, and whether
+there were any unexpected connections or missing links.

@@ -1,0 +1,30 @@
+---
+title: "Docker registry with coolify"
+description: "Self host docker registry with coolify for staging or use as a build server and push to prod"
+date: "2025-05-09"
+tags: ["coolify", "selfhost", "dockerregistry"]
+draft: true
+---
+
+## Self hosted docker registry
+
+    pwd generator sudo apt install apache2-utils
+    Create password for docker login mkdir -p ./auth htpasswd -Bbn username 'password' > ./auth/registry.password
+    Mount on docker compose:
+
+    volumes:
+      -
+        type: bind
+        source: /data/coolify/auth/registry.password
+        target: /auth/registry.password
+        isDirectory: false
+
+    docker login localhost:5000
+    docker tag name:latest localhost:5000/name:latest
+    docker push docker tag my-app:latest localhost:5000/my-app:latest
+
+Resources and links:
+
+    https://www.youtube.com/watch?v=cg28Ztt4-os&t=2033s
+    https://coolify.io/docs/knowledge-base/cloudflare/tunnels/all-resource#_3-setup-cloudflare-tunnel-on-coolify
+    https://coolify.io/docs/knowledge-base/server/openssh
