@@ -5,6 +5,15 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/
 bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
 rm ~/miniconda3/miniconda.sh
 
+echo 'export PATH="$HOME/miniconda3/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+conda create --name envname python=3.11
+conda init
+
+restart terminal
+conda activate envname
+
 ### Create venv
 
 mkdir -p ~/conda-envs
