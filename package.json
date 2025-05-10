@@ -1,34 +1,34 @@
 {
-  "name": "Yaseen Blog",
-  "version": "1.0.0",
-  "description": "Blog",
-  "author": "Syed Yaseen",
-  "license": "MIT",
+  "name": "astro-micro",
+  "type": "module",
+  "version": "0.0.1",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "export": "next build && next export"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/syedyaseen/blog.git"
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
   "dependencies": {
-    "@vercel/analytics": "^1.2.2",
-    "@vercel/speed-insights": "^1.0.10",
-    "next": "^14.1.1",
-    "nextra": "3.0.0-alpha.22",
-    "nextra-theme-docs": "3.0.0-alpha.22",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/mdx": "^4.2.6",
+    "@astrojs/rss": "^4.0.11",
+    "@astrojs/sitemap": "^3.3.1",
+    "@fontsource/geist-mono": "^5.2.6",
+    "@fontsource/geist-sans": "^5.2.5",
+    "@tailwindcss/vite": "^4.1.5",
+    "astro": "^5.7.11",
+    "astro-pagefind": "^1.8.3",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.2.0",
+    "tailwindcss": "^4.1.5",
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
-    "@types/node": "20.11.24",
-    "@types/react": "^18.2.61",
-    "autoprefixer": "^10.4.18",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3"
+    "@tailwindcss/typography": "^0.5.16",
+    "pagefind": "^1.3.0",
+    "prettier": "^3.5.3",
+    "prettier-plugin-astro": "^0.14.1",
+    "prettier-plugin-tailwindcss": "^0.6.11"
   }
 }
