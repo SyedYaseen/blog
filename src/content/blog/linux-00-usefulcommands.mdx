@@ -1,0 +1,17 @@
+---
+title: "Useful Linux Commands"
+description: "Random collection of useful linux commands"
+date: "2025-05-09"
+tags: ["linux", "bash", "scriting"]
+draft: true
+---
+
+## Check network use
+Install iftop `sudo apt install iftop`
+Find current network interfaces `ip addr`
+Monitor using iftop `sudo iftop -i proton0`
+
+## Set alias or add variable to .bashrc
+
+echo "alias arrrg='ls -lah --color=auto'" >> ~/.bashrc && source ~/.bashrc
+echo "arrrg='somevariable'" >> ~/.bashrc && source ~/.bashrc
