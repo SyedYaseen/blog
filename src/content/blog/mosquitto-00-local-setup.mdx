@@ -1,0 +1,44 @@
+---
+title: "Local docker compose MQTT(Mosquitto)"
+description: "Commands and a quick overview to setup local mosquitto server for pub sub"
+date: "2025-05-09"
+tags: ["pubsub", "MQTT", "Mosquitto"]
+---
+
+## Docker compose setup:
+
+Docker-Compose.yaml
+```
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    hostname: mosquitto
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./:/etc/mosquitto
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+```
+
+### Config
+```
+cd ../desiredFolder
+nano mosquitto.conf
+```
+
+#### Paste following configs:
+allow_anonymous false
+password_file /etc/mosquitto/passwd
+
+#### Password
+`nano passwd`
+Add `user:pwd` to file
+
+#### Use password
+1. Change permissions of pwd file for docker container
+`docker exec mosquitto chown root:root /etc/mosquitto/passwd`
+2. Encrypt password
+`docker exec mosquitto mosquitto_passwd -U /etc/mosquitto/passwd`

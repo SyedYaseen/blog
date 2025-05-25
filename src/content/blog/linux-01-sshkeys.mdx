@@ -1,0 +1,24 @@
+---
+title: "SSH keys for Github"
+description: "Create SSH keys to access github"
+date: "2025-05-12"
+tags: ["linux", "bash", "scripting"]
+---
+
+## Steps
+1. Create folder `mkdir /home/user/.ssh/folder` if not already exists
+2. `ssh-keygen` -> Enter folder and file name of key
+3. Change ownership of folder `sudo chown -R user:user /home/user/.ssh/folder/keyname`
+4. Add key to ssh `ssh-add /home/user/.ssh/folder/keyname`
+5. Update config `nano ~/.ssh/config`
+
+```
+Host github.com
+  User git
+  IdentityFile /path/to/your/custom_key
+```
+6. Copy key.pub to https://github.com/settings/keys
+
+Tip:
+Above steps applicable for any service or server and if that server needs to get the pub key for SSH access into it,
+`ssh-copy-id -i ~/.ssh/keyname.pub user@ipaddr`
