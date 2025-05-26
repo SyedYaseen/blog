@@ -19,8 +19,11 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./:/etc/mosquitto
+      # - ./:/etc/mosquitto
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./certs:/mosquitto/config/certs # If using certs
+      - ./passwd:/mosquitto/config/passwd
+      - ./data:/mosquitto/data
 ```
 
 ### Config
@@ -30,8 +33,16 @@ nano mosquitto.conf
 ```
 
 #### Paste following configs:
+log_dest stdout
+
+listener 1883
+listener 8883
+protocol mqtt
+
 allow_anonymous false
-password_file /etc/mosquitto/passwd
+password_file /etc/mosquitto/pwd
+persistence false
+
 
 #### Password
 `nano passwd`
@@ -39,6 +50,63 @@ Add `user:pwd` to file
 
 #### Use password
 1. Change permissions of pwd file for docker container
-`docker exec mosquitto chown root:root /etc/mosquitto/passwd`
+`docker exec mosquitto chown root:root /etc/mosquitto/pwd`
 2. Encrypt password
-`docker exec mosquitto mosquitto_passwd -U /etc/mosquitto/passwd`
+`docker exec mosquitto mosquitto_passwd -U /etc/mosquitto/pwd`
+
+### PubSub
+
+```
+sudo apt install mosquitto-clients
+mosquitto_sub -v -t 'hello/topic' -u user -P pwd
+
+# sub with local ca.crt
+mosquitto_sub -h localhost -p 8883 \
+  --cafile ./mosq/certs/ca.crt \
+  -t 'hello/topic' \
+  -u hymn -P localpassword \
+  --insecure
+
+
+mosquitto_pub -t 'hello/topic' -m 'hello MQTT' -u user -P pwd
+```
+
+## Self signed SSL certs
+```
+cd mosquitto/certs
+
+# Generate CA
+openssl genrsa -out ca.key 2048
+openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj "/CN=LocalMQTTCA"
+
+# Generate server key and CSR
+openssl genrsa -out server.key 2048
+openssl req -new -out server.csr -key server.key -subj "/CN=localhost"
+
+# Sign server cert with our CA
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 365
+```
+
+- Add following to .conf
+cafile /mosquitto/config/certs/ca.crt
+certfile /mosquitto/config/certs/server.crt
+keyfile /mosquitto/config/certs/server.key
+
+require_certificate false
+
+
+### Why require_certificate is set to false
+1. This setting controls whether the client must present a certificate.
+  - require_certificate false: The broker (Mosquitto) will use server-side TLS only, i.e. encrypted connection, but will not require the client to send a certificate.
+  - require_certificate true: The broker will do mutual TLS, i.e. require each client to present a valid certificate signed by the CA (used for very secure internal networks).
+2. Since most MQTT clients (like mqtt.js, IoT devices, etc.) don’t use client certs, we usually leave this as:
+  require_certificate false
+3. This still ensures encrypted connections, just without enforcing client certs.
+
+### Why is rejectUnauthorized: false in the client?
+1. This tells the Node.js client not to reject self-signed or untrusted certificates.
+2. In your case, since you're using a self-signed CA, the certificate is not trusted by default (unlike Let's Encrypt certs). Node.js will reject such connections unless you:
+  - Provide the CA file with ca: fs.readFileSync(...)
+  - OR disable cert validation with rejectUnauthorized: false
+3. If you were using a cert signed by a public CA (e.g. Let's Encrypt), you'd omit rejectUnauthorized entirely.
+4. Best practice: Use ca and set rejectUnauthorized: true when deploying to production with real certs.
