@@ -110,3 +110,8 @@ require_certificate false
   - OR disable cert validation with rejectUnauthorized: false
 3. If you were using a cert signed by a public CA (e.g. Let's Encrypt), you'd omit rejectUnauthorized entirely.
 4. Best practice: Use ca and set rejectUnauthorized: true when deploying to production with real certs.
+
+### Debugging
+
+1. `docker exec mosquitto netstat -tuln` check if correct ports and protocol is present
+2. Temporarily set allow_anonymous true in mosquitto.conf
