@@ -1,0 +1,27 @@
+---
+title: "Llama cpp install"
+description: "Quick overview on setting up local llma cpp"
+date: "2025-05-09"
+tags: ["docker", "debugging"]
+---
+
+## Install local
+1. [CUDA local](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=24.04&target_type=deb_local)
+2. This forces reinstall and build llama cpp python with CUDA so that GPU can be used
+```
+CMAKE_ARGS="-DGGML_CUDA=on -DGGML_CUDA_FORCE_CUBLAS=on -DLLAVA_BUILD=off -DCMAKE_CUDA_ARCHITECTURES=native" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir --force-reinstall --upgrade
+```
+3. The only thing that worked outright was creating a new venv with conda and then installing llama cpp python lib. Every other option either failed to install or failed to GPU after install
+
+## Llama cpp cli
+```
+git clone https://github.com/ggml-org/llama.cpp.git
+cd llama.cpp
+mkdir build
+cd build
+cmake -B build
+cmake --build build --config Release
+
+llama-cli -m "mistral-7b-instruct-v0.1.Q2_K.gguf" -cnv
+
+```
