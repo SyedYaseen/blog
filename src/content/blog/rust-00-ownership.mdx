@@ -1,0 +1,245 @@
+---
+title: "Rust101-Ownership"
+description: "What it is and what it can do?"
+date: "2025-07-11"
+tags: 
+---
+
+## Ownership
+1. Each value must always have one and only one variable pointing to it, that is its owner.
+2. At the end of scope of the owner, the value is dropped (i.e.) memory is deallocated.
+3. Ownership is `moved` by default, but can be copied using `Copy`.
+
+### Moving and Copying
+1. Primitive values like int, bool are copied by default.
+
+## Borrowing
+1. Borrowing allows temporary references (&T or &mut T) without transferring ownership.
+2. At any given time there can only be either a mutable or an unmutable reference.
+3. A reference must always be valid.
+
+### !(Mut + UnMUt)
+1. Cannot have mutable and unmutable ref for the same value at the same time.
+2. Cannot have multiple mutable ref, to avoid race mutations to same value, if both ref are used to modify the same value. Avoids corrupting data.
+3. Can have multiple unmutable ref.
+
+### Invalid reference
+Following fails because "a" is out of scope at the end of dangling fn and will be cleared. So a reference to a non existing value is not possible. (i.e.) cannot borrow from dropped value.
+```
+fn main() {
+    let aref = dangling();
+}
+
+fn dangling() -> &String {
+    let a = String:from("Hello");
+
+    &a;
+}
+```
+
+
+## Slice
+Example
+```
+fn main() {
+    let s = String::from("Hello world");
+    let fw = first_word(&s);
+    println!("{}", fw);
+}
+
+fn first_word(s: &String) -> &str {
+    for (i, &item) in s.as_bytes().iter().enumerate() {
+        if item == b' ' {
+            return &s[..i];
+        }
+    }
+
+    return &s[..];
+}
+```
+
+#### Why &s[..] instead of s[..]?
+
+- s[..] means “slice from 0 to end”
+- s[..] derefs s: &String to String, then calls - Deref<Target=str>
+- So s[..] gives a str (unsized)
+- Wrapping with &: &s[..] is a &str (sized, usable)
+
+- String owns heap memory
+- &String borrows the whole struct
+- &str borrows just the actual text (slice of bytes)
+- You need &s[..] to convert a &String to a &str
+
+| Expression | Type      | Notes                         |
+| ---------- | --------- | ----------------------------- |
+| `s`        | `&String` | Reference to the whole String |
+| `*s`       | `String`  | Dereferenced String           |
+| `(*s)[..]` | `str`     | Underlying string slice       |
+| `&s[..]`   | `&str`    | Reference to string slice ✅   |
+
+
+
+[Source](https://www.youtube.com/watch?v=VFIOSWy93H0&list=PLai5B987bZ9CoVR-QEIN9foz4QCJ0H2Y8&index=4)
+
+
+## Modules
+
+### Scenario 1: Seprate modul.rs file
+
+- DO NOT wrap it in mod modul { ... }
+- Instead, declare it in main.rs using mod modul;
+- Then use it with use modul::... or modul::...
+
+#### Layout
+
+src/
+├── main.rs
+└── modul.rs
+
+``` main.rs
+mod modul; // loads src/modul.rs
+
+use modul::Breakfast;
+
+fn main() {
+    let summer_bf = Breakfast::summer_menu();
+    println!("{:?}", summer_bf);
+}
+
+```
+
+``` modul.rs
+#[derive(Debug)]
+pub struct Breakfast {
+    pub food: String,
+    pub drink: String,
+}
+
+impl Breakfast {
+    pub fn summer_menu() -> Breakfast {
+        Breakfast {
+            food: "Toast".into(),
+            drink: "Orange juice".into(),
+        }
+    }
+}
+```
+
+mod modul; tells the compiler to load the external file, and the file must not declare mod modul {} again — that would be redundant and cause a nested path like modul::modul::Breakfast.
+
+### Scenario 2: You define the module inline inside main.rs
+
+- DO use mod modul { ... } directly
+- No need for mod modul; or separate file
+- You can still use modul::... if you like
+
+
+``` main.rs
+mod modul {
+    #[derive(Debug)]
+    pub struct Breakfast {
+        pub food: String,
+        pub drink: String,
+    }
+
+    impl Breakfast {
+        pub fn summer_menu() -> Breakfast {
+            Breakfast {
+                food: "Toast".into(),
+                drink: "Orange juice".into(),
+            }
+        }
+    }
+}
+
+use modul::Breakfast;
+
+fn main() {
+    let summer_bf = Breakfast::summer_menu();
+    println!("{:?}", summer_bf);
+}
+```
+
+
+## Seprate folder sub modules
+src/
+├──outermodul/
+|   └── innermodul.rs
+├── outermodul.rs --> use innermodul;
+└── main.rs --> use outermodul;
+
+If there is an inner modul, that needs to present in a folder with same name as the outermodul. This can then be access by outermodul.
+
+
+## If adding a bunch of utils to same folder
+rust expects mod.rs file in directory. 
+src/
+└── utils/
+    ├── mod.rs
+    ├── math.rs
+    ├── stringconcat.rs
+    └── extracttoken.rs
+
+Other files that we want to import into other files must be brought into scope in the mod.rs file.
+```
+pub mod math;
+pub mod stringconcat;
+pub mod extracttoken;
+```
+
+In main.rs
+```
+mod utils;  // loads utils/mod.rs and submodules
+
+fn main() {
+    // To access math and concat functions:
+    let sum = utils::math::add(1, 2);
+    let combined = utils::stringconcat::concat_str("foo", "bar");
+}
+
+```
+
+
+| Scenario               | How to declare submodules in `mod.rs`       | How to declare in `main.rs`          | How to use modules               |
+| ---------------------- | ------------------------------------------- | ------------------------------------ | -------------------------------- |
+| Folder with `mod.rs`   | `pub mod math; pub mod concat;` in `mod.rs` | `mod utils;` in `main.rs`            | `utils::math::func()`            |
+| Flat files no `mod.rs` and no foder | N/A                                         | `mod math; mod concat;` in `main.rs` | `math::func()`, `concat::func()` |
+
+
+## Copy and move
+In the following example, both 
+`println!("{}", &v[0]);`
+`println!("{}", v[0]);`
+will work.
+
+```
+pub fn collections() {
+    let mut v: Vec<i32> = Vec::new();
+    let v2 = vec![1, 2, 3, 4];
+
+    v.push(1);
+
+    println!("{}", &v[0]);
+}
+
+```
+
+When using `v[0]` or `&v[0]`
+1. i32 by default "copies" to another variable when it is assigned.
+2. String and structs when assign to another var need to be passed as ref, else they will be "moved" on default. Can be cloned with .clone(). Compile err if not passed as ref.
+3. println accepts ref of variable. println!("{}", x); will auto-borrow x if it implements Display by reference. E.g. String, Vec, custom structs, if v[0] is used. If not, it will accept a clone (internally), If String is passed, will auto deref to &String which implements Display interface.
+
+4. `println!("{}", v[0]);` will work even if vector had a string at index 0, because by default [] indexing fn returns the reference not the owner and the auto deref will automatically use the &String from String.
+
+5. But `let s = vStr[0];` will not compile if idx 0 is string
+    1. We get a reference like before, but String type cant copy by default
+    2. It tries to move but it cant just remove it from that vector which isnt allowed.
+6. This is why `let a = vStr[0];` doesnt work but both println!("{}", &v[0]) and `println!("{}", v[0])` work.
+
+***From ChatGPT:***
+| Code                           | Borrowed? | Moved? | Why it works                             |
+| ------------------------------ | --------- | ------ | ---------------------------------------- |
+| `println!("{}", v[0])`         | ✅ yes     | ❌ no   | `v[0]` returns reference; auto-borrowed  |
+| `println!("{}", &v[0])`        | ✅ yes     | ❌ no   | Explicitly borrowed                      |
+| `println!("{}", v[0].clone())` | ❌ no      | ✅ yes  | Clones and moves the cloned value        |
+| `let x = v[0];`                | ❌ no      | ❌ no   | ❌ Fails for non-Copy types like `String` |

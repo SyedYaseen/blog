@@ -6,7 +6,31 @@ tags: ["llm", "langchain", "prompts"]
 draft: true
 ---
 
-##
+## Simple LangChain
+### Components of a simple chain
+1. Prompt template
+2. Llm
+3. Output parser
 
+```
+    summary_template = "Give this information: {information} about this person from their linkedin profile. Write a two point short summary."
+    summary_prompt_template = PromptTemplate(
+        input_variables=["info"], template=summary_template)
 
-##
+    llm = ChatDeepSeek(
+        model="deepseek-chat",
+        temperature=0,
+        max_tokens=None,
+        timeout=None,
+        max_retries=2
+    )
+
+    chain = summary_prompt_template | llm | StrOutputParser()
+    res = chain.invoke(input={"information": information })
+```
+
+## Chain with Tools
+Inaddition to the components above. This will contain the following components
+1. Tools - Holds the tools that the llm can use
+2. Hub - Get pre written prompts. E.g. `prompt = hub.pull("hwchase17/react")`
+3. AgentExecutor - Entity that orchestrates the execution
