@@ -1,0 +1,31 @@
+---
+title: "ProtonVPN with WireGuard"
+description: "Commands to configure protonVPN with wireguard"
+date: "2025-05-12"
+tags: ["linux", "proton", "wireguard", "vpn"]
+---
+
+Get Wireguard configs from https://account.protonvpn.com/downloads
+
+## Commands
+```
+sudo apt update
+sudo apt install wireguard resolvconf
+
+mv ~/Downloads/proton-de-43.conf ~/protonvpn.conf
+sudo mv ~/protonvpn.conf /etc/wireguard/
+sudo chmod 600 /etc/wireguard/protonvpn.conf
+sudo wg-quick up protonvpn
+
+sudo wg
+sudo wg-quick down protonvpn
+sudo systemctl enable wg-quick@protonvpn
+sudo systemctl disable wg-quick@protonvpn
+sudo nmcli connection import type wireguard file /etc/wireguard/protonvpn.conf
+
+sudo nmcli connection modify protonvpn connection.permissions ""
+sudo systemctl restart NetworkManager
+nmcli connection up protonvpn
+
+```
+
