@@ -2,7 +2,7 @@
 title: "Rust101"
 description: "Notes and thoughts on Rust Basics"
 date: "2025-07-11"
-tags: 
+tags: ["ownership", "generics","rust"]
 ---
 
 ## Ownership
@@ -18,7 +18,7 @@ tags:
 2. At any given time there can only be either a mutable or an unmutable reference.
 3. A reference must always be valid.
 
-### !(Mut + UnMUt)
+### !(Mut + UnMut)
 1. Cannot have mutable and unmutable ref for the same value at the same time.
 2. Cannot have multiple mutable ref, to avoid race mutations to same value, if both ref are used to modify the same value. Avoids corrupting data.
 3. Can have multiple unmutable ref.
@@ -39,7 +39,7 @@ fn dangling() -> &String {
 
 
 ## Slice
-Example
+
 ```
 fn main() {
     let s = String::from("Hello world");
@@ -61,7 +61,7 @@ fn first_word(s: &String) -> &str {
 #### Why &s[..] instead of s[..]?
 
 - s[..] means “slice from 0 to end”
-- s[..] derefs s: &String to String, then calls - Deref<Target=str>
+- s[..] derefs s: &String to String, then calls - `Deref<Target=str>`
 - So s[..] gives a str (unsized)
 - Wrapping with &: &s[..] is a &str (sized, usable)
 
@@ -78,23 +78,22 @@ fn first_word(s: &String) -> &str {
 | `&s[..]`   | `&str`    | Reference to string slice ✅   |
 
 
-
-[Source](https://www.youtube.com/watch?v=VFIOSWy93H0&list=PLai5B987bZ9CoVR-QEIN9foz4QCJ0H2Y8&index=4)
-
-
 ## Modules
 
 ### Scenario 1: Seprate modul.rs file
 
-- DO NOT wrap it in mod modul { ... }
+- DO NOT wrap it in `mod modul { ... }`
 - Instead, declare it in main.rs using mod modul;
 - Then use it with use modul::... or modul::...
 
 #### Layout
-
+With this example layout
+```text
 src/
 ├── main.rs
 └── modul.rs
+```
+
 
 ``` main.rs
 mod modul; // loads src/modul.rs
@@ -129,7 +128,7 @@ mod modul; tells the compiler to load the external file, and the file must not d
 
 ### Scenario 2: You define the module inline inside main.rs
 
-- DO use mod modul { ... } directly
+- DO use `mod modul { ... }` directly
 - No need for mod modul; or separate file
 - You can still use modul::... if you like
 
@@ -173,12 +172,14 @@ If there is an inner modul, that needs to present in a folder with same name as 
 
 ## If adding a bunch of utils to same folder
 rust expects mod.rs file in directory. 
+``` text
 src/
 └── utils/
     ├── mod.rs
     ├── math.rs
     ├── stringconcat.rs
     └── extracttoken.rs
+```
 
 Other files that we want to import into other files must be brought into scope in the mod.rs file.
 ```
@@ -208,8 +209,8 @@ fn main() {
 
 ## Copy and move
 In the following example, both 
-`println!("{}", &v[0]);`
-`println!("{}", v[0]);`
+1. `println!("{}", &v[0]);` 
+2. `println!("{}", v[0]);` <br/>
 will work.
 
 ```
@@ -226,20 +227,133 @@ pub fn collections() {
 
 When using `v[0]` or `&v[0]`
 1. i32 by default "copies" to another variable when it is assigned.
-2. String and structs when assign to another var need to be passed as ref, else they will be "moved" on default. Can be cloned with .clone(). Compile err if not passed as ref.
-3. println accepts ref of variable. println!("{}", x); will auto-borrow x if it implements Display by reference. E.g. String, Vec, custom structs, if v[0] is used. If not, it will accept a clone (internally), If String is passed, will auto deref to &String which implements Display interface.
+2. String and structs when assign to another var need to be passed as ref, else they will be "moved" on default. Can be cloned with .clone(). Compile err when trying to access the same after move, if not passed as ref initially.
+3. `println` accepts ref of variable. `println!("{}", x);` will auto-borrow x if it implements Display by reference. E.g. String, Vec, custom structs, if v[0] is used. If not, it will accept a clone (internally), If String is passed, will auto deref to &String which implements Display interface.
 
 4. `println!("{}", v[0]);` will work even if vector had a string at index 0, because by default [] indexing fn returns the reference not the owner and the auto deref will automatically use the &String from String.
 
 5. But `let s = vStr[0];` will not compile if idx 0 is string
     1. We get a reference like before, but String type cant copy by default
-    2. It tries to move but it cant just remove it from that vector which isnt allowed.
-6. This is why `let a = vStr[0];` doesnt work but both println!("{}", &v[0]) and `println!("{}", v[0])` work.
+    2. But moving from a vector isnt allowerd.
+6. This is why `let a = vStr[0];` doesnt work but both `println!("{}", &v[0])` and `println!("{}", v[0])` work.
 
-***From ChatGPT:***
+**From ChatGPT:**
 | Code                           | Borrowed? | Moved? | Why it works                             |
 | ------------------------------ | --------- | ------ | ---------------------------------------- |
 | `println!("{}", v[0])`         | ✅ yes     | ❌ no   | `v[0]` returns reference; auto-borrowed  |
 | `println!("{}", &v[0])`        | ✅ yes     | ❌ no   | Explicitly borrowed                      |
 | `println!("{}", v[0].clone())` | ❌ no      | ✅ yes  | Clones and moves the cloned value        |
 | `let x = v[0];`                | ❌ no      | ❌ no   | ❌ Fails for non-Copy types like `String` |
+
+
+## Generics With more Ownership understandings
+
+### Functions accessible based on their traits
+Below is an example of a generic scenario where based on the type/ trait of the incoming type,
+the object gets access to different methods.
+```
+#[derive(Debug)]
+struct Point<T,U>  {
+    x: T,
+    y: U,
+}
+
+impl<T: Copy, U> Point<T,U> { // get_x is accessible only for variables with copy trait
+    fn get_x(&self) -> T {
+        self.x
+    }
+}
+
+impl<T> Point<T,f64> {
+    fn get_floaty(&self) -> f64 {
+        self.y
+    }
+}
+
+fn enumgenr() {
+    let flotPt = Point { x: 5, y: 3.5 };
+    flotPt.get_floaty();
+    flotPt.get_x();
+    let intPt = Point { x: 5, y: 3 };
+    // intPt.get_floaty(); // wont work
+    intPt.get_x();
+}
+
+```
+
+### Complex Generic usecase
+We try to combine two different generics and create an output combining their types.
+
+**Calling function to give context**
+1. All points contains x and y
+2. There are two examples here one with a method for copy trait and another with clone trait.
+3. Both examples have two points each, and combine x from pt1 and y from pt2.
+
+```
+fn mixup() {
+    // Copy trait
+    let a = Point {x: 1, y: 3.0};
+    let b = Point {x: "Hello", y: 'c'};
+
+    let c = a.mix(b);
+    println!("{:?}", c);
+    println!("{:?}", a);
+
+    // Clone trait
+    let d = Point {x: String::from("tasd"), y: 3.0};
+    let e = Point {x: String::from("Hello"), y: 'c'};
+
+    let f = a.mix(b);
+    println!("{:?}", f);
+    println!("{:?}", d);
+}
+```
+
+**Copy Trait**
+1. Supports T with copy trait, e.g. int, char, static str (stored on stack, fixed size).
+2. &self is a ref. Always copies. If "self" instead of "&self" was used, it means that struct "a" is moved
+into the method. 
+3. Which means a is no longer usable after this fn call. This is not because of the copy itself but simply how ownership is transferred if reference isn't passed.
+
+```
+impl <T: Copy, U> Point<T, U> {
+    fn mix<V, W>(&self, pt: Point<V, W>) -> Point<T, W> {
+        Point {x: self.x, y: pt.y }
+    }
+}
+```
+
+**Clone Trait**
+1. Support T with clone trait. e.g. String, heap allocated, can grow.
+2. Here the value needs to be explicitly cloned since its not allowed to be moved out of a reference.
+3. Since &self is a shared self reference.
+
+```
+impl <T: Clone, U> Point<T, U> {
+    fn mix<V, W>(&self, pt: Point<V, W>) -> Point<T, W> {
+        Point {x: self.x.clone(), y: pt.y }
+    }
+}
+```
+
+**Clone trait without `&self`**
+
+1. Support T with Clone trait, e.g. String (heap-allocated, not Copy).
+2. This uses `self` instead of `&self`, meaning the method takes ownership of the whole struct.
+3. Because `self` is owned (not a reference), we are allowed to move `x` out of it directly.
+4. No need to clone here, even though T isn't Copy, because the method owns the value and value is moved.
+5. Any method trying to access the struct after passing to method will cause a compiler error
+
+```
+impl <T: Clone, U> Point<T, U> {
+    fn mix<V, W>(self, pt: Point<V, W>) -> Point<T, W> {
+        Point {x: self.x, y: pt.y }
+    }
+}
+```
+
+
+> &x.y always means "take a reference to x.y", regardless of whether x is already a reference or not.
+
+[Source](https://www.youtube.com/watch?v=VFIOSWy93H0&list=PLai5B987bZ9CoVR-QEIN9foz4QCJ0H2Y8&index=4)
+
