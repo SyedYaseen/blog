@@ -25,7 +25,7 @@ tags: ["ownership", "generics","rust"]
 
 ### Invalid reference
 Following fails because "a" is out of scope at the end of dangling fn and will be cleared. So a reference to a non existing value is not possible. (i.e.) cannot borrow from dropped value.
-```
+``` rust
 fn main() {
     let aref = dangling();
 }
@@ -40,7 +40,7 @@ fn dangling() -> &String {
 
 ## Slice
 
-```
+``` rust
 fn main() {
     let s = String::from("Hello world");
     let fw = first_word(&s);
@@ -95,7 +95,7 @@ src/
 ```
 
 
-``` main.rs
+``` rust main.rs
 mod modul; // loads src/modul.rs
 
 use modul::Breakfast;
@@ -107,7 +107,7 @@ fn main() {
 
 ```
 
-``` modul.rs
+``` rust modul.rs
 #[derive(Debug)]
 pub struct Breakfast {
     pub food: String,
@@ -133,7 +133,7 @@ mod modul; tells the compiler to load the external file, and the file must not d
 - You can still use modul::... if you like
 
 
-``` main.rs
+``` rust main.rs
 mod modul {
     #[derive(Debug)]
     pub struct Breakfast {
@@ -182,14 +182,14 @@ src/
 ```
 
 Other files that we want to import into other files must be brought into scope in the mod.rs file.
-```
+``` rust
 pub mod math;
 pub mod stringconcat;
 pub mod extracttoken;
 ```
 
 In main.rs
-```
+``` rust
 mod utils;  // loads utils/mod.rs and submodules
 
 fn main() {
@@ -213,7 +213,7 @@ In the following example, both
 2. `println!("{}", v[0]);` <br/>
 will work.
 
-```
+``` rust
 pub fn collections() {
     let mut v: Vec<i32> = Vec::new();
     let v2 = vec![1, 2, 3, 4];
@@ -251,7 +251,7 @@ When using `v[0]` or `&v[0]`
 ### Functions accessible based on their traits
 Below is an example of a generic scenario where based on the type/ trait of the incoming type,
 the object gets access to different methods.
-```
+``` rust
 #[derive(Debug)]
 struct Point<T,U>  {
     x: T,
@@ -289,7 +289,7 @@ We try to combine two different generics and create an output combining their ty
 2. There are two examples here one with a method for copy trait and another with clone trait.
 3. Both examples have two points each, and combine x from pt1 and y from pt2.
 
-```
+``` rust
 fn mixup() {
     // Copy trait
     let a = Point {x: 1, y: 3.0};
@@ -315,7 +315,7 @@ fn mixup() {
 into the method. 
 3. Which means a is no longer usable after this fn call. This is not because of the copy itself but simply how ownership is transferred if reference isn't passed.
 
-```
+``` rust
 impl <T: Copy, U> Point<T, U> {
     fn mix<V, W>(&self, pt: Point<V, W>) -> Point<T, W> {
         Point {x: self.x, y: pt.y }
@@ -328,7 +328,7 @@ impl <T: Copy, U> Point<T, U> {
 2. Here the value needs to be explicitly cloned since its not allowed to be moved out of a reference.
 3. Since &self is a shared self reference.
 
-```
+``` rust
 impl <T: Clone, U> Point<T, U> {
     fn mix<V, W>(&self, pt: Point<V, W>) -> Point<T, W> {
         Point {x: self.x.clone(), y: pt.y }
@@ -344,7 +344,7 @@ impl <T: Clone, U> Point<T, U> {
 4. No need to clone here, even though T isn't Copy, because the method owns the value and value is moved.
 5. Any method trying to access the struct after passing to method will cause a compiler error
 
-```
+``` rust
 impl <T: Clone, U> Point<T, U> {
     fn mix<V, W>(self, pt: Point<V, W>) -> Point<T, W> {
         Point {x: self.x, y: pt.y }
@@ -354,6 +354,199 @@ impl <T: Clone, U> Point<T, U> {
 
 
 > &x.y always means "take a reference to x.y", regardless of whether x is already a reference or not.
+
+## Lifetimes
+Manual generic lifetime annotation is necessary only if rust compiler coudln't categorise our scenario
+into one of the below rules.
+
+1. The first rule is that the compiler assigns a different lifetime parameter to each 
+lifetime in each input type. `fn foo<'a, 'b>(x: &'a i32, y: &'b i32)` 
+(Note the signature has no return type, if there was we would have an ambiguity requiring manual annotation)
+
+2. The second rule is that, if there is exactly one input lifetime parameter, 
+that lifetime is assigned to all output lifetime parameters: `fn foo<'a>(x: &'a i32) -> &'a i32`
+
+3. The third rule is that, if there are multiple input lifetime parameters, but one of them 
+is &self or &mut self because this is a method, the lifetime of self is assigned to all 
+output lifetime parameters.
+
+``` rust
+pub fn main() {
+    let x = String::from("aaaa");
+    let y = String::from("aa");
+    longest(&x, &y);
+}
+
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+```
+1. Both inputs (longest fn) are references
+
+2. Rust doesnt like dangling references/ ref with no value attached to them, because the value might 
+have been destroyed or out of scope.
+
+3. So in example, The function will always return either x or y — so a valid reference is being returned. 
+The compiler doesn't know whether the returned reference will have the lifetime of x or y, and that’s 
+why explicit lifetime annotation is required.
+
+4. So we tell it to use a generic lifetime ('a)
+
+5. Generic liftime annotations define the relationship between the lifetimes of multiple references 
+and how they relate to each other.
+
+6. So it doesnt change the lifetime, just lets all the references in scope understand 
+how they relate to each other.
+
+7. By adding the same lifetime `'a` to all ref and return type, we are creating a relationship 
+`fn longest<'a>(x: &'a str, y: &'a str) -> &'a str`.
+
+8. The relationship is that, all ref and return will have same lifetime.
+
+9. It doesn't change the lifetime, but just assumes that the lifetime is 
+the smallest lifetime out of all the arguments.
+
+**Following will err**
+``` rust
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+
+fn main() {
+    let string1 = String::from("long string is long");
+    let result;
+    {
+        let string2 = String::from("xyz");
+        result = longest(&string1, &string2);
+    }
+    println!("The longest string is '{result}'");
+}
+```
+1. Lifetime of input refs and return is same as the lifetime of
+ref with shortest lifetime.
+2. string2 has shortest lifetime.
+3. When trying to access result after string2's lifetime expired compiler throws 
+an err. `string2 does not live long enough`
+
+> Same rules apply to Structs holding references
+```
+struct Book<'a> {
+    author: &'a str,
+    title: &'a str,
+}
+
+pub fn main() {
+    let book = Book {
+        author: "George Orwell",
+        title: "1984",
+    };
+
+    println!("{} by {}", book.title, book.author);
+}
+```
+
+> All string literals have `'static` lifetimes, since they are stored in prpgrams binary as static strings.
+
+## Smart Pointers
+- Smart pointers are not simply references to values in memory, but could be datastructures with additional overhead
+- In many cases smart pointers own the data they reference. E.g Strings and Vectors
+- They are structs that implement Deref and Drop traits
+    - Deref Trait: Code that specifies what happens when pointer is deref. Lets the struct be used like pointer. 
+        Example: Box<T>, Rc<T>, and String all implement Deref to behave like pointers/references to their inner data (T or str)
+    - Drop Trait: Like destructor. Specify what happens when smart pointer goes out of scope.
+
+### Box<T>
+- When sz of type isnt known at compile time. E.g. tree, linkedlist are recursive data structures and their actual size cant be known at compile time.
+- When we need to transfer ownership of large amounts of data without copying.
+- When we want to hold a value as long as it has a specific trait, and not care about the type. E.g. Box<dyn Error>, holds value of type that implements Error trait, but its type could be anything.
+
+### RefCell
+- RefCell<T> enables interior mutability: modifying data even when the outer variable is immutable.
+- Borrowing rules (exclusive mutable or multiple immutable borrows) are checked at runtime instead of compile time.
+
+### Weak pointers
+Here is some additional code incase you're like me and didnt understand.
+
+1. Rc - shared ref
+2. Refcell - runtime mutability
+3. Node struct(below) can have parent and vec of child
+4. ::new method that creates default values for parent and child on Node creation
+
+***In main***
+1. Create two nodes, parent and child
+2. Push child into Parent's vector using runtime refcell deref
+3. Weak from child to parent using same refcell deref.
+
+***Implications***
+1. Child cant keep parent alive, (i.e) if parent is out of scope, child is also gone. Weak ref will not stop this from happening or linger on heap as orphan. Created using Rc::downgrade
+2. Parent is a strong ref, hence owns the children.
+
+```
+struct Node {
+    name: String,
+    parent: RefCell<Weak<Node>>,
+    children: RefCell<Vec<Rc<Node>>>
+}
+
+impl Node {
+    fn new(name: &str) -> Node {
+        Node {
+            name: name.to_string(),
+            parent: RefCell::new(Weak::new()),
+            children: RefCell::new(vec![])
+        }
+    }
+}
+
+fn main() {
+    let parent = Rc::new(Node::new("new"));
+    let child = Rc::new(Node::new("child"));
+
+    parent.children.borrow_mut().push(Rc::clone(&child));
+    println!("After adding child");
+    println!("Parent Weak: {} Strong: {}", Rc::weak_count(&parent),  Rc::strong_count(&parent));
+    println!("Child Weak: {} Strong: {}", Rc::weak_count(&child),  Rc::strong_count(&child));
+
+    *child.parent.borrow_mut() = Rc::downgrade(&parent);
+    println!("After adding weak ref");
+    println!("Parent Weak: {} Strong: {}", Rc::weak_count(&parent),  Rc::strong_count(&parent));
+    println!("Child Weak: {} Strong: {}", Rc::weak_count(&child),  Rc::strong_count(&child));
+
+}
+```
+
+## Concurrency
+
+***Concurrent***
+Different parts of a program make progress independently, but not necessarily at the same time.
+Tasks can overlap in time (e.g., interleaved execution on a single CPU core).
+
+Example:
+1. A web server handling multiple requests "simultaneously" by switching between them rapidly (even on a single core).
+2. Async programming in Rust (tokio, async/await) where tasks yield control while waiting for I/O.
+
+***Parallel***
+Different parts of a program execute simultaneously (at the exact same time). Requires multiple CPU cores/threads.
+
+Example:
+1. Running matrix multiplication on 4 CPU cores.
+
+### Threads
+1. Os run app in a process.
+2. That process can spawn multiple threads.
+3. Each thread can run simultaneously doing different work.
+4. Execution and picking task is non deterministic.
+5. Can lead to
+    - Race conditions - two or more threads accessing/ modifying data in an unpredictable way.
+    - Dead locks - two or more threads are depending on other thread to complete, causing both to wait indefinitely.
 
 [Source](https://www.youtube.com/watch?v=VFIOSWy93H0&list=PLai5B987bZ9CoVR-QEIN9foz4QCJ0H2Y8&index=4)
 
