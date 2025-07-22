@@ -1,0 +1,13 @@
+---
+title: "Rusty Book Shelf"
+description: "Custom implementation of Audiobookshelf on Rust for low power devices"
+date: "2025-07-21"
+tags: ["rust", "audiobooks", "software"]
+draft: true
+---
+
+## Mount an SSD with Pi Zero 2W
+1. `lsblk` lists all storage devices.
+2. `sudo blkid /dev/sda1` gets the fs type.
+3. If its ext4 create a mount path `sudo mkdir -p /mnt/ssd`
+4. Mount partition `sudo mount /dev/sda1 /mnt/ssd`

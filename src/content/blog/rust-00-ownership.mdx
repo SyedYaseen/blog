@@ -460,21 +460,42 @@ pub fn main() {
 - In many cases smart pointers own the data they reference. E.g Strings and Vectors
 - They are structs that implement Deref and Drop traits
     - Deref Trait: Code that specifies what happens when pointer is deref. Lets the struct be used like pointer. 
-        Example: Box<T>, Rc<T>, and String all implement Deref to behave like pointers/references to their inner data (T or str)
+        Example: `Box<T>, Rc<T>`, and String all implement Deref to behave like pointers/references to their inner data (T or str)
     - Drop Trait: Like destructor. Specify what happens when smart pointer goes out of scope.
 
-### Box<T>
+### `Box<T>`
 - When sz of type isnt known at compile time. E.g. tree, linkedlist are recursive data structures and their actual size cant be known at compile time.
 - When we need to transfer ownership of large amounts of data without copying.
-- When we want to hold a value as long as it has a specific trait, and not care about the type. E.g. Box<dyn Error>, holds value of type that implements Error trait, but its type could be anything.
+- When we want to hold a value as long as it has a specific trait, and not care about the type. E.g. `Box<dyn Error>`, holds value of type that implements Error trait, but its type could be anything.
 
 ### RefCell
-- RefCell<T> enables interior mutability: modifying data even when the outer variable is immutable.
+- `RefCell<T>` enables interior mutability: modifying data even when the outer variable is immutable.
 - Borrowing rules (exclusive mutable or multiple immutable borrows) are checked at runtime instead of compile time.
+<br/>
+- We wrap rc over refcell because rc doesnt let us pass a mut ref.
+- Once we deref rc, we can then get access to runtime mutable ref using refcell.
+- Else rc would want us to either
+    - clone it, then it wont mut same value
+    - or move the value in which case we will lose the "value" ref that we currently have.
+
+``` rust
+let value = Rc::new(RefCell::new(123));
+let aa = Rc::new(ConsRef(Rc::clone(&value), Rc::new(Nil)));
+
+let bb = Cons(111, Rc::clone(&aa));
+let cc = Cons(222, Rc::clone(&aa));
+
+println!("Count of ref to aa: {}", Rc::strong_count(&aa));
+
+println!("{:#?}", bb);
+*value.borrow_mut() = 25;
+println!("{:#?}", bb);
+
+```
+
+
 
 ### Weak pointers
-Here is some additional code incase you're like me and didnt understand.
-
 1. Rc - shared ref
 2. Refcell - runtime mutability
 3. Node struct(below) can have parent and vec of child
@@ -547,6 +568,104 @@ Example:
 5. Can lead to
     - Race conditions - two or more threads accessing/ modifying data in an unpredictable way.
     - Dead locks - two or more threads are depending on other thread to complete, causing both to wait indefinitely.
+
+### Message passing
+- Instead of using shared memory to communicate, communicate to share memory.
+- Use channel to send messages between threads.
+
+
+### Shared state Concurrency
+We can either
+- Pass the state from one thread to another by moving the whole state. 
+- Concurrently access the same state variable without moving it another thread.
+
+#### Mutex
+- Mutual exclusion - Only one thread can access data/ state at any point in time.
+- Get access to state by getting the mutex lock. 
+- Once the lock )MutexGuard) goes out of scope it gives back the lock. Other threads can access it afterwards.
+- 
+An example of mutex where we use a scope after `locking` the mutex for access.
+`Mutex { data: 6, poisoned: false, .. }`
+- Locking done inside a scope. Creates a `MutexGuard`.
+- Once that guard is out of scope, the guard is dropped.
+- So it can be picked by another thread.
+
+``` rust
+fn mutx() {
+    let m = Mutex::new(5);
+    {
+        let mut num: std::sync::MutexGuard<'_, i32> = m.lock().unwrap();
+        *num = 6;
+    }
+    println!("{:?}", m);
+}
+```
+
+
+
+An example of mutex without scope and accessing mutex in same scope, without releasing the lock.
+`Mutex { data: <locked>, poisoned: false, .. }`
+- Output says data is locked, because its not possible to lock the same mutex again even with the same thread.
+- Since we have unlocked the mutex, and rust doesnt know what value will be in the future, it defaults to showing the locked status for the value.
+
+
+``` rust
+fn mutx() {
+    let m = Mutex::new(5);
+    let mut num: std::sync::MutexGuard<'_, i32> = m.lock().unwrap();
+    *num = 6;
+    println!("{:?}", m);
+}
+```
+
+### Arc 
+`Arc<T>` (Atomic Reference Counting) is a thread-safe version of `Rc<T>`. It gives access to shared ownership of data across threads by cloning immutable references.
+
+Without Arc
+
+``` rust
+let m = Mutex::new(0);
+spawn(move || { /* m moved here */ }); 
+spawn(move || { }); // Error: Can't move `m` into multiple threads.
+```
+
+- Each thread's closure moves the value 
+    - Causing ownership move of the mutex in this case.
+    - Then the next thread cant use the same mutex/ shared state.
+
+- Wrap mutex in an Arc for shared ownership `let m = Arc::new(Mutex::new(0));`
+- Then each thread can clone the arc (not the mutex).`let m_arc = Arc::clone(&m);`
+- Threads can use this to access the shared mutex without moving the actual mutex.
+- The Mutex ensures exclusive access during mutation `let mut g = m_arc.lock().unwrap();`
+
+Spawn 10 threads that inc mutex value by 1.
+``` rust
+fn mutx_arc() {
+    
+    let m = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let m_arc = Arc::clone(&m);
+        let handle = spawn(move || {
+            let mut g = m_arc.lock().unwrap();
+            *g += 1;
+        });
+
+        handles.push(handle);
+    }
+
+    for h in handles {
+        h.join().unwrap();
+    }
+
+    println!("{:#?}", m);
+}
+```
+
+## Send and Sync traits - TO DO
+
+
 
 [Source](https://www.youtube.com/watch?v=VFIOSWy93H0&list=PLai5B987bZ9CoVR-QEIN9foz4QCJ0H2Y8&index=4)
 
