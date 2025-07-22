@@ -663,8 +663,106 @@ fn mutx_arc() {
 }
 ```
 
-## Send and Sync traits - TO DO
+## Async Await 
+- async method returns a type that implements `future trait`
+- Future is a state machine that can be Polled.
+    - Tracks its state internally (e.g., "not started", "waiting I/O", "completed").
+- Future trait has two components
+    - The `Output<T>`
+    - A poll method
+- On each poll returns an enum with two states
+    - Pending - Continues waiting to get value
+    - Ready - Once data is ready, it must call the Wake callback to notify the executor.
+- Futures are lazy, so unless awaited or given to an executor nothing will happen.
 
+### Tokio
+- When calling a fn `x` thats async that might contain multiple async/await methods inside it,
+    - That `x` function will have a state machine that has multiple states within it.
+    - Once each inner await is completed and their respective outputs are obtained, the states change from pending to complete
+    - Then as a whole the output is obtained on the fn that polls or awaits it.
+    - Compilers state machine below
+    ``` rust
+    enum XFuture {
+        State0,                // Initial state
+        State1(DBFuture),      // Waiting for first `call_db()`
+        State2(String),        // Ready to print first result
+        State3(DBFuture),      // Waiting for second `call_db()`
+        State4(String),        // Ready to print second result
+        Completed,             // Final state
+    }
+    ```
+    - Each .await is a state transition (e.g., State0 → State1 when first call_db() starts).
+    - The executor polls this future repeatedly, advancing the state machine.
+
+- We need an async runtime to execute async await, without this, we can add async keyword to main fn.
+- So we use an async runtime like tokio provide a runtime.
+``` rust
+#[tokio::main]
+async fn main() {
+    x().await;
+}
+
+async fn x() {
+    let v = call_db().await;  // State 1: Waiting for `call_db()`
+    println!("Db call 1 {}", v);  // State 2: Print first result
+
+    let v2 = call_db().await;  // State 3: Waiting for `call_db()` again
+    println!("Db call 2 {}", v2);  // State 4: Print second result
+}
+
+async fn call_db() -> String {
+    "database value".to_owned()
+}
+```
+
+### Tokio task
+-  "green thread" refers to a lightweight, user-space thread managed by the Tokio runtime (not the OS).
+- Tasks help top level futures e.g. fn x, to execute in parallel.
+- OS threads > # of CPU cores, but this will cause switching between tasks. If there are too many threads,
+it causes resource starvation.
+
+| Feature               | Tokio Task (Green Thread)          | OS Thread                     |
+|-----------------------|------------------------------------|-------------------------------|
+| **Managed by**        | Tokio runtime (user-space)         | OS kernel                     |
+| **Memory overhead**   | ~1-2KB per task                    | ~1-10MB per thread            |
+| **Creation cost**     | Extremely cheap (nanoseconds)      | Expensive (microseconds)      |
+| **Scheduling**        | Cooperative (non-preemptive)       | Preemptive (OS-controlled)    |
+| **Parallelism**       | Runs on thread pool (configurable) | 1:1 with kernel threads       |
+
+### Task execution
+
+```
+#[tokio::main]
+async fn main() {
+    let task1 = tokio::spawn(async {
+        call_db().await; // (A)
+        call_api().await; // (B)
+    });
+
+    let task2 = tokio::spawn(async {
+        call_other_service().await; // (C)
+    });
+
+    tokio::join!(task1, task2);
+}
+
+```
+- Single-Threaded Runtime: (Concurrency)
+    1. Time 0-1ms: Task1 (call_db) → Pending (yields)
+    2. Time 1-2ms: Task2 (call_other_service) → Ready
+    3. Time 2-3ms: Task1 (call_api) → Ready
+
+- Multi-Threaded Runtime (2 cores): (Parallelism)
+    1. Core 1: Task1 (call_db) ──────→ Task1 (call_api)
+    2. Core 2: Task2 (call_other_service) ──→ Done
+
+- Within a task: .await enforces serial execution.
+- Across tasks:
+    - Single-core → Concurrent (time-sliced).
+    - Multi-core → Parallel + Concurrent.
+- Tokio optimizes I/O: Thousands of tasks can "wait" without blocking threads.
+
+## Send and Sync traits - TO DO
 
 
 [Source](https://www.youtube.com/watch?v=VFIOSWy93H0&list=PLai5B987bZ9CoVR-QEIN9foz4QCJ0H2Y8&index=4)
