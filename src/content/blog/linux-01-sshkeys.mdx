@@ -11,7 +11,8 @@ tags: ["linux", "bash", "scripting"]
 3. Change ownership of folder `sudo chown -R user:user /home/user/.ssh/folder/keyname`
 4. Add key to ssh `ssh-add /home/user/.ssh/folder/keyname`
 5. Update config `nano ~/.ssh/config`
-
+6. Private key is kept on our machine
+7. Public key is copied to the remote host. Use `ssh-copy-id`.
 ```
 Host github.com
   User git
