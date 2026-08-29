@@ -1,0 +1,40 @@
+---
+/**
+ * Persistent status line, in the spirit of a tmux or vim statusline: it always
+ * reports real state — the current path on the left, theme and position on the
+ * right — rather than decorating the page.
+ */
+const segments = Astro.url.pathname.split("/").filter(Boolean);
+const path = segments.length ? `~/${segments.join("/")}` : "~";
+---
+
+<div class="statusline" data-pagefind-ignore transition:persist>
+  <span class="statusline-path">
+    <span class="text-amber">&rsaquo;</span>
+    <span>{path}</span>
+  </span>
+
+  <span class="flex shrink-0 items-center">
+    <button
+      id="back-to-top"
+      class="statusline-btn pointer-events-none opacity-0 transition-opacity"
+      aria-label="Back to top"
+    >
+      &uarr; top
+    </button>
+    <button
+      id="theme-button"
+      class="statusline-btn"
+      aria-label="Change colour theme"
+    >
+      <span id="theme-label">auto</span>
+    </button>
+  </span>
+</div>
+
+<style>
+  :global(html.scrolled) #back-to-top {
+    pointer-events: auto;
+    opacity: 1;
+  }
+</style>

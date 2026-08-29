@@ -1,0 +1,44 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { readingTime } from "@lib/utils";
+
+type Props = {
+  entry: CollectionEntry<"blog"> | CollectionEntry<"projects">;
+  /** Show the full ISO date. Off in the blog index, where the year is a heading. */
+  full?: boolean;
+};
+
+const { entry, full = false } = Astro.props;
+
+const date = entry.data.date;
+const pad = (n: number) => String(n).padStart(2, "0");
+const short = `${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
+const long = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+---
+
+<a href={`/${entry.collection}/${entry.id}`} class="row">
+  <time
+    class:list={["row-date", full && "row-date-full"]}
+    datetime={date.toISOString()}
+  >
+    {/* narrow screens cannot spare 10 characters for a date */}
+    {full ? <><span class="sm:hidden">{short}</span><span class="hidden sm:inline">{long}</span></> : short}
+  </time>
+  <span class="min-w-0 flex-1">
+    <span class="row-title block">{entry.data.title}</span>
+    {
+      entry.data.description && (
+        <span class="mt-0.5 block truncate text-[13px]">
+          {entry.data.description}
+        </span>
+      )
+    }
+  </span>
+  {
+    entry.body && (
+      <span class="row-meta">
+        {readingTime(entry.body).replace(" read", "")}
+      </span>
+    )
+  }
+</a>

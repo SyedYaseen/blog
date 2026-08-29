@@ -2,7 +2,7 @@
 title: "Exit Codes Don't Lie"
 description: "Building graceful shutdown into a tokio TCP server, one wrong turn at a time"
 date: "2026-08-29"
-tags: ["rust", "tokio", "async", "unix", "signals"]
+tags: ["rust", "async", "linux"]
 ---
 
 > This is a learning experiment. I was writing a small Redis-like store to learn Rust,
@@ -79,7 +79,7 @@ tokio::select! {
 `SignalKind::terminate()` only builds a value that *names* the signal. Nothing listens. The
 async block finishes instantly, so the branch is always ready and `select!` fires it forever.
 
-```
+```text
 listening on 6871 (pid 29656)
 Terminating down...
 Terminating down...
@@ -191,7 +191,7 @@ server survives being raced.
 
 Adding `break` to the signal arms immediately broke the build:
 
-```
+```text
 error[E0308]: expected `Result<(), Error>`, found `()`
 ```
 
@@ -217,7 +217,7 @@ return type first.
 At this point it compiled and looked finished. I tested it with a request in flight — client
 connected, line sent, server mid-work — then sent SIGTERM:
 
-```
+```text
 accepted 127.0.0.1:54852
 Terminating...
 client got: b''          <- no echo, socket just closed
@@ -247,7 +247,7 @@ returns.
 
 Same test, now:
 
-```
+```text
 Terminating...
 Task is cancelled
 client got: b'hello\n'    <- the reply it owed
@@ -330,7 +330,7 @@ Ok(())
 `timeout` yields `Result<_, Elapsed>`, and `Elapsed` converts into `io::Error` as
 `ErrorKind::TimedOut` — so plain `?` works, and a blown deadline exits 1.
 
-```
+```text
 Terminating...
 Error: Kind(TimedOut)
 exit code: 1 after 2.0s
@@ -344,7 +344,7 @@ Ugly, but it is the normal fatal path.
 One case was still missing. During a long drain, what happens if the operator hits Ctrl-C
 again? I tested it with a 30-second deadline and 20 seconds of work:
 
-```
+```text
 Terminating...
 >>> sending SIGINT during the drain   (nothing)
 >>> sending another SIGINT            (nothing)
@@ -430,7 +430,7 @@ def run(case, sig):
 The client-side `recv` is the part that matters. The exit code tells you what the server
 *claims*; the reply tells you whether it was true.
 
-```
+```text
 ===== idle =====     no client at all
 exit 0   after 0.0s   client None
 

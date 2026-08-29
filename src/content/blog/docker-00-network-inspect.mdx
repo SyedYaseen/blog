@@ -1,18 +1,21 @@
 ---
-title: "Docker network debug"
-description: "Quick overview and useful commands to setup python env on an ubuntu machine"
+title: "Which network is my container actually on?"
+description: "A one-liner that maps every Docker network to its containers, for when two services cannot see each other"
 date: "2025-05-09"
-tags: ["docker", "debugging"]
+tags: ["docker", "networking"]
 ---
 
-## Docker network inspect
-When debugging Docker containers, I needed to verify whether each container was connected to the correct network(s). 
-This was important because network misconfiguration can cause containers to fail to communicate with each other, 
-especially in multi-container setups (e.g., when using docker-compose or custom user-defined bridge networks).
+Containers that cannot reach each other usually look like a DNS problem and
+usually are not. In a multi-container setup — Compose, or hand-rolled bridge
+networks — the common cause is duller: the two containers are simply not on the
+same network, so the name resolution that Docker provides *within* a network
+never applies.
 
-To do this efficiently across all networks, I used the following command:
+`docker network inspect` answers this, but only one network at a time, and the
+whole question is which network a container ended up on. So loop over all of
+them:
 
-```
+```sh
 for net in $(docker network ls --format '{{.ID}}'); do
     echo "Network: $net"
     docker network inspect "$net" | jq -r '.[0].Containers[]?.Name'
@@ -20,10 +23,23 @@ for net in $(docker network ls --format '{{.ID}}'); do
 done
 ```
 
-- Lists all Docker network IDs.
-- For each network, runs docker network inspect to see which containers are connected.
-- Uses jq -r to extract and print only the container names in raw text format (no quotes).
-- Groups the output by network, making it easy to scan for container membership.
+- `docker network ls --format '{{.ID}}'` gives bare IDs with no header row, so
+  it can be fed straight into the loop.
+- `jq -r '.[0].Containers[]?.Name'` pulls just the container names out of the
+  inspect output. The `?` matters: it tolerates networks with no containers
+  attached, which would otherwise abort the loop with an error.
 
-This helped me quickly identify whether a specific container was attached to the expected network, and whether
-there were any unexpected connections or missing links.
+The output is grouped by network, so you can scan it for the two containers
+that ought to be together and check whether they are.
+
+Two things this catches that are easy to miss otherwise: a container attached
+to the default `bridge` network instead of the project's own — where Docker's
+DNS does not resolve container names at all — and a container quietly attached
+to *more* networks than intended, usually left over from an earlier
+`docker-compose.yml`.
+
+Once you know which network you want, attaching is one command:
+
+```sh
+docker network connect mynetwork mycontainer
+```

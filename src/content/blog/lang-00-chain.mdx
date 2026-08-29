@@ -1,36 +1,66 @@
 ---
-title: "Practical LangChain 101"
-description: ""
+title: "Chains, tools, and the loop in between"
+description: "The three pieces a chain is made of, and what changes when you give it tools"
 date: "2025-06-18"
-tags: ["llm", "langchain", "prompts"]
-draft: true
+tags: ["llm", "python"]
 ---
 
-## Simple LangChain
-### Components of a simple chain
-1. Prompt template
-2. Llm
-3. Output parser
+LangChain's abstractions make more sense once you notice they are all built to
+be composed with `|`. A chain is a pipeline, in the shell sense — each stage
+takes the previous stage's output and hands on its own.
 
+## A simple chain
+
+Three components, in order:
+
+1. **Prompt template** — turns your variables into the text the model sees.
+2. **LLM** — the model itself.
+3. **Output parser** — turns the model's response back into a Python value.
+
+```python
+summary_template = "Give this information: {information} about this person from their linkedin profile. Write a two point short summary."
+summary_prompt_template = PromptTemplate(
+    input_variables=["information"], template=summary_template)
+
+llm = ChatDeepSeek(
+    model="deepseek-chat",
+    temperature=0,
+    max_tokens=None,
+    timeout=None,
+    max_retries=2
+)
+
+chain = summary_prompt_template | llm | StrOutputParser()
+res = chain.invoke(input={"information": information})
 ```
-    summary_template = "Give this information: {information} about this person from their linkedin profile. Write a two point short summary."
-    summary_prompt_template = PromptTemplate(
-        input_variables=["info"], template=summary_template)
 
-    llm = ChatDeepSeek(
-        model="deepseek-chat",
-        temperature=0,
-        max_tokens=None,
-        timeout=None,
-        max_retries=2
-    )
+The names in `input_variables` have to match the `{placeholders}` in the
+template string and the keys you pass to `invoke`. All three, exactly — a
+mismatch fails at invoke time rather than at construction, so it surfaces later
+than you would like.
 
-    chain = summary_prompt_template | llm | StrOutputParser()
-    res = chain.invoke(input={"information": information })
-```
+`temperature=0` for anything you want to be reproducible. The default is
+non-zero and you get a different summary on every run.
 
-## Chain with Tools
-Inaddition to the components above. This will contain the following components
-1. Tools - Holds the tools that the llm can use
-2. Hub - Get pre written prompts. E.g. `prompt = hub.pull("hwchase17/react")`
-3. AgentExecutor - Entity that orchestrates the execution
+`StrOutputParser` pulls the plain text out of the message object. Without it
+you get an `AIMessage` and have to reach for `.content` yourself — fine on its
+own, awkward when piping into another stage.
+
+## Adding tools
+
+The pipeline above can only produce text. To let the model *do* things, three
+more pieces:
+
+1. **Tools** — the functions the model is allowed to call.
+2. **Hub** — pre-written prompts, so you are not writing the ReAct scaffolding
+   yourself: `prompt = hub.pull("hwchase17/react")`.
+3. **AgentExecutor** — the loop that actually runs it.
+
+The `AgentExecutor` is the real difference. A chain runs once, start to finish.
+An agent runs a loop: the model picks a tool, the executor calls it, feeds the
+result back, and the model decides whether it is done. The model does not
+execute anything itself — it emits a tool name and arguments, and the executor
+is what turns that into a call.
+
+Which is also where the cost goes, since each pass through the loop is another
+request.

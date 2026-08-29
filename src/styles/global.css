@@ -4,36 +4,64 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --font-sans: Geist Sans, ui-sans-serif, system-ui, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-mono: Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, 'Liberation Mono', 'Courier New', monospace;
+/* ---------------------------------------------------------------------------
+   Palette. Light is the default; `.dark` on <html> swaps the same token names,
+   so every utility below resolves through one set of variables.
+
+   ink    page ground        silk   primary text
+   raised panels and code    muted  secondary text
+   rule   hairlines          amber  the single accent (phosphor lineage)
+--------------------------------------------------------------------------- */
+:root {
+  --ink: #f4f2ed;
+  --raised: #fbfaf7;
+  --silk: #15171e;
+  --muted: #63697a;
+  --rule: #ddd9d0;
+  --amber: #9a6410;
+  --amber-soft: #9a641026;
 }
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
+.dark {
+  --ink: #14161d;
+  --raised: #1a1d26;
+  --silk: #e6e4df;
+  --muted: #8a90a2;
+  --rule: #272b36;
+  --amber: #e0a340;
+  --amber-soft: #e0a34024;
+}
 
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
+@theme {
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: var(--ink);
+  --color-raised: var(--raised);
+  --color-silk: var(--silk);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+
+  /* one measure for the whole site, sized to the monospace index */
+  --container-measure: 46rem;
+}
+
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
+    border-color: var(--rule);
   }
-}
 
-@layer utilities {
   html {
     overflow-y: auto;
     color-scheme: light;
-    scroll-padding-top: 100px;
+    scroll-padding-top: 6rem;
+    background-color: var(--ink);
   }
 
   html.dark {
@@ -46,108 +74,336 @@
   }
 
   body {
-    @apply font-sans antialiased;
-    @apply flex flex-col;
-    @apply bg-neutral-100 dark:bg-neutral-900;
-    @apply text-black/75 dark:text-white/75;
+    @apply flex flex-col font-mono antialiased;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    /* clears the fixed status line */
+    padding-bottom: 2rem;
   }
 
-  header {
-    @apply fixed left-0 right-0 top-0 z-50 py-6;
-    @apply bg-neutral-100/75 dark:bg-neutral-900/75;
-    @apply saturate-200 backdrop-blur-xs;
+  ::selection {
+    background: var(--amber-soft);
+    color: var(--silk);
   }
 
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+}
+
+@layer components {
   main {
-    @apply flex-1 py-32;
+    @apply flex-1 pt-28 pb-24;
   }
 
-  footer {
-    @apply py-6 text-sm;
+  /* -- header ------------------------------------------------------------ */
+  .site-header {
+    @apply fixed inset-x-0 top-0 z-50 py-4;
+    background: color-mix(in srgb, var(--ink) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 200ms ease;
   }
 
+  html.scrolled .site-header {
+    border-bottom-color: var(--rule);
+  }
+
+  /* -- the status line: signature element -------------------------------- */
+  .statusline {
+    @apply fixed inset-x-0 bottom-0 z-50 flex items-center justify-between gap-4
+      px-4 text-[11px] leading-none tracking-wide;
+    height: 2rem;
+    color: var(--muted);
+    background: var(--raised);
+    border-top: 1px solid var(--rule);
+  }
+
+  .statusline-path {
+    @apply truncate;
+  }
+
+  .statusline-btn {
+    @apply shrink-0 px-1.5 py-1 uppercase tracking-[0.12em] transition-colors;
+    color: var(--muted);
+  }
+
+  .statusline-btn:hover {
+    color: var(--amber);
+  }
+
+  /* -- section labels ---------------------------------------------------- */
+  .label {
+    @apply flex items-center gap-3 text-[13px];
+    color: var(--muted);
+  }
+
+  .label-sigil {
+    color: var(--amber);
+  }
+
+  .label::after {
+    content: '';
+    @apply h-px flex-1;
+    background: var(--rule);
+  }
+
+  /* -- index rows -------------------------------------------------------- */
+  .row {
+    @apply relative flex items-baseline gap-4 py-2.5 no-underline transition-colors;
+    color: var(--muted);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .row:last-child {
+    border-bottom: none;
+  }
+
+  .row-date {
+    @apply w-[5.5ch] shrink-0 tabular-nums text-[13px];
+    color: var(--muted);
+  }
+
+  .row-date-full {
+    @apply sm:w-[10.5ch];
+  }
+
+  .row-title {
+    @apply min-w-0 flex-1 truncate;
+    color: var(--silk);
+  }
+
+  .row-meta {
+    @apply shrink-0 text-[12px] tabular-nums opacity-0 transition-opacity;
+  }
+
+  .row:hover .row-meta,
+  .row:focus-visible .row-meta {
+    @apply opacity-100;
+  }
+
+  .row:hover .row-title,
+  .row:focus-visible .row-title {
+    color: var(--amber);
+  }
+
+  /* the caret slides into the gutter on hover */
+  .row::before {
+    content: '\203A';
+    @apply absolute -left-4 opacity-0 transition-all;
+    color: var(--amber);
+    transform: translateX(-4px);
+  }
+
+  .row:hover::before,
+  .row:focus-visible::before {
+    @apply opacity-100;
+    transform: translateX(0);
+  }
+
+  /* -- tag chips --------------------------------------------------------- */
+  .chip {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 text-[12px] no-underline transition-colors;
+    color: var(--muted);
+    border: 1px solid var(--rule);
+  }
+
+  .chip:hover {
+    color: var(--amber);
+    border-color: var(--amber);
+  }
+
+  /* -- blinking block cursor --------------------------------------------- */
+  .cursor {
+    @apply inline-block align-baseline;
+    width: 0.6em;
+    height: 1em;
+    background: var(--amber);
+    translate: 0 0.12em;
+    animation: blink 1.2s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    0%,
+    50% {
+      opacity: 1;
+    }
+    50.01%,
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Long-form prose. Set in IBM Plex Sans — a whole tutorial in monospace is
+   punishing to read, so the chrome stays mono and the reading does not.
+--------------------------------------------------------------------------- */
+@layer components {
   article {
-    @apply prose prose-neutral max-w-full dark:prose-invert prose-img:mx-auto prose-img:my-auto;
-    @apply prose-headings:font-semibold;
-    @apply prose-headings:text-black dark:prose-headings:text-white;
+    @apply prose max-w-full font-sans;
+    --tw-prose-body: var(--muted);
+    --tw-prose-headings: var(--silk);
+    --tw-prose-bold: var(--silk);
+    --tw-prose-counters: var(--muted);
+    --tw-prose-bullets: var(--rule);
+    --tw-prose-hr: var(--rule);
+    --tw-prose-quotes: var(--silk);
+    --tw-prose-quote-borders: var(--amber);
+    --tw-prose-captions: var(--muted);
+    --tw-prose-code: var(--silk);
+    --tw-prose-th-borders: var(--rule);
+    --tw-prose-td-borders: var(--rule);
+    font-size: 1rem;
+    line-height: 1.75;
   }
-}
 
-@layer utilities {
+  article :is(h1, h2, h3, h4) {
+    @apply font-mono font-semibold tracking-tight;
+  }
+
+  article h2 {
+    @apply mt-12 mb-4 text-xl;
+  }
+
+  article h3 {
+    @apply mt-8 mb-3 text-base;
+  }
+
+  /* headings are anchors; mark them the way a prompt marks a line */
+  article :is(h2, h3) > a[href^='#']::before,
+  article :is(h2, h3)::before {
+    content: '';
+  }
+
   article a {
-    @apply font-sans text-current underline underline-offset-[3px];
-    @apply decoration-black/30 dark:decoration-white/30;
-    @apply transition-colors duration-300 ease-in-out;
+    @apply font-sans text-current underline decoration-1 underline-offset-[3px] transition-colors;
+    text-decoration-color: var(--rule);
   }
+
   article a:hover {
-    @apply text-black dark:text-white;
-    @apply decoration-black/50 dark:decoration-white/50;
+    color: var(--amber);
+    text-decoration-color: var(--amber);
+  }
+
+  article strong {
+    @apply font-semibold;
+  }
+
+  article blockquote {
+    @apply not-italic;
+    border-left-width: 2px;
+    background: var(--amber-soft);
+    padding-block: 0.25rem;
+  }
+
+  article :not(pre) > code {
+    @apply font-mono text-[0.85em];
+    background: var(--raised);
+    padding: 0.1em 0.35em;
+    border-radius: 2px;
+  }
+
+  article :not(pre) > code::before,
+  article :not(pre) > code::after {
+    content: none;
+  }
+
+  article img {
+    @apply mx-auto;
+    border: 1px solid var(--rule);
+  }
+
+  article table {
+    @apply text-sm;
   }
 }
 
-.animate {
-  @apply -translate-y-3 opacity-0;
-  @apply transition-all duration-300 ease-out;
-}
-
-.animate.show {
-  @apply translate-y-0 opacity-100;
-}
-
-html #back-to-top {
-  @apply pointer-events-none opacity-0;
-}
-
-html.scrolled #back-to-top {
-  @apply pointer-events-auto opacity-100;
-}
-
-/* shiki config */
-pre {
-  @apply border border-black/15 py-5 dark:border-white/20;
-}
-
+/* ---------------------------------------------------------------------------
+   Code blocks. Shiki is configured with theme "css-variables", so these
+   variables are the syntax theme — retuned to the site palette.
+--------------------------------------------------------------------------- */
 :root {
-  --astro-code-foreground: #09090b;
-  --astro-code-background: #fafafa;
-  --astro-code-token-comment: #a19595;
-  --astro-code-token-keyword: #f47067;
-  --astro-code-token-string: #00a99a;
-  --astro-code-token-function: #429996;
-  --astro-code-token-constant: #2b70c5;
-  --astro-code-token-parameter: #4e8fdf;
-  --astro-code-token-string-expression: #ae42a0;
-  --astro-code-token-punctuation: #8996a3;
-  --astro-code-token-link: #8d85ff;
+  --astro-code-foreground: #15171e;
+  --astro-code-background: #fbfaf7;
+  --astro-code-token-comment: #8b8778;
+  --astro-code-token-keyword: #9a3a2a;
+  --astro-code-token-string: #3f6b34;
+  --astro-code-token-function: #2f5d8c;
+  --astro-code-token-constant: #7a4a12;
+  --astro-code-token-parameter: #45566e;
+  --astro-code-token-string-expression: #3f6b34;
+  --astro-code-token-punctuation: #7c8291;
+  --astro-code-token-link: #9a6410;
 }
 
 .dark {
-  --astro-code-foreground: #fafafa;
-  --astro-code-background: #09090b;
-  --astro-code-token-comment: #a19595;
-  --astro-code-token-keyword: #f47067;
-  --astro-code-token-string: #00a99a;
-  --astro-code-token-function: #6eafad;
-  --astro-code-token-constant: #b3cceb;
-  --astro-code-token-parameter: #4e8fdf;
-  --astro-code-token-string-expression: #bf7db6;
-  --astro-code-token-punctuation: #8996a3;
-  --astro-code-token-link: #8d85ff;
+  --astro-code-foreground: #e6e4df;
+  --astro-code-background: #1a1d26;
+  --astro-code-token-comment: #666d80;
+  --astro-code-token-keyword: #e88b6a;
+  --astro-code-token-string: #9ec97f;
+  --astro-code-token-function: #82b7e8;
+  --astro-code-token-constant: #e0a340;
+  --astro-code-token-parameter: #b6bccd;
+  --astro-code-token-string-expression: #9ec97f;
+  --astro-code-token-punctuation: #767d92;
+  --astro-code-token-link: #e0a340;
 }
 
-/* copy code button on codeblocks */
+pre {
+  @apply relative overflow-x-auto text-[13px] leading-relaxed;
+  border: 1px solid var(--rule);
+  padding: 1.25rem 1rem;
+}
+
+pre code {
+  @apply font-mono;
+}
+
+/* copy button on code blocks */
 .copy-code {
-  @apply absolute right-3 top-3 grid size-9 place-content-center rounded-sm border border-black/15 bg-neutral-100 text-center duration-300 ease-in-out dark:border-white/20 dark:bg-neutral-900;
+  @apply absolute top-2 right-2 grid size-8 place-content-center text-[11px]
+    uppercase tracking-wider transition-colors;
+  color: var(--muted);
+  background: var(--raised);
+  border: 1px solid var(--rule);
 }
 
 .copy-code:hover {
-  @apply bg-[#E9E9E9] transition-colors dark:bg-[#232323];
+  color: var(--amber);
+  border-color: var(--amber);
 }
 
 .copy-code:active {
   @apply scale-90 transition-transform;
 }
 
-blockquote {
-  @apply not-italic;
+/* entrance reveal, staggered from Head.astro */
+.animate {
+  @apply translate-y-2 opacity-0 transition-all duration-500 ease-out;
+}
+
+.animate.show {
+  @apply translate-y-0 opacity-100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate,
+  .animate.show {
+    @apply translate-y-0 opacity-100 transition-none;
+  }
+
+  .cursor {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }

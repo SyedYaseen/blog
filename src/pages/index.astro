@@ -1,9 +1,8 @@
 ---
 import Layout from "@layouts/Layout.astro";
 import Container from "@components/Container.astro";
+import EntryRow from "@components/EntryRow.astro";
 import { SITE, HOME, SOCIALS } from "@consts";
-import ArrowCard from "@components/ArrowCard.astro";
-import Link from "@components/Link.astro";
 import { getCollection } from "astro:content";
 import type { CollectionEntry } from "astro:content";
 
@@ -18,113 +17,123 @@ const projects: CollectionEntry<"projects">[] = (
   .filter((project) => !project.data.draft)
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
   .slice(0, SITE.NUM_PROJECTS_ON_HOMEPAGE);
+
+const now = [
+  "an e-commerce build on Medusa",
+  "an internet audio player for my son",
+  "a browser extension that scores car deals",
+];
 ---
 
 <Layout title={HOME.TITLE} description={HOME.DESCRIPTION}>
   <Container>
-    <aside data-pagefind-ignore>
-      <h1 class="font-semibold text-black dark:text-white">
-        Hi I'm Yaseen
-      </h1>
-      <div class="space-y-16">
-        <section>
-          <article class="space-y-4">
-            <span>
-              <p>
-                Hi, I’m a curious developer who tinkers with web tech, embedded systems, machine learning, and self-hosting.
-                I build weirdly useful things with Next.js, .NET, Python, Postgres, Docker, ESP32s, and Pi Zeros—usually
-                self-hosted and always over-engineered. 
-              </p>                
-              <p>Lately, I’ve been exploring</p>
-                <ul>
-                  <li> An e-commerce project using Medusa </li>
-                  <li> An internet audio player for my son </li>
-                  <li> A browser extension that shows if a car deal is good </li>
-                </ul>
-              </p>
-              
-              <p>
-                I blog about what works, what breaks, what nearly caught fire, and what somehow got fixed in prod. 
-                Expect deep dives, quirky humor, and semi-useful insights from someone who enjoys gluing together 
-                scraping tools, ML models, hardware hacks, and overthought infra.
-              </p>
-              
-            </span>
-          </article>
-        </section>
+    <div data-pagefind-ignore class="space-y-16">
+      <section class="animate space-y-5">
+        <p class="text-[13px]">
+          <span class="text-amber">$</span> whoami
+        </p>
 
-        <section class="animate space-y-6">
-          <div class="flex flex-wrap items-center justify-between gap-y-2">
-            <h2 class="font-semibold text-black dark:text-white">
-              Latest posts
-            </h2>
-            <Link href="/blog"> See all posts </Link>
-          </div>
-          <ul class="not-prose flex flex-col gap-4">
-            {
-              blog.map((post) => (
-                <li>
-                  <ArrowCard entry={post} />
-                </li>
-              ))
-            }
-          </ul>
-        </section>
+        <h1
+          class="text-[1.6rem] leading-[1.35] font-semibold tracking-tight text-silk sm:text-[1.9rem]"
+        >
+          I build weirdly useful things with Next.js, .NET, Python, ESP32s and
+          Pi Zeros. Usually self-hosted. Always <span class="text-amber"
+            >over-engineered</span
+          >.<span class="cursor ml-1.5" aria-hidden="true"></span>
+        </h1>
 
-        <section class="animate space-y-6">
-          <div class="flex flex-wrap items-center justify-between gap-y-2">
-            <h2 class="font-semibold text-black dark:text-white">
-              Recent projects
-            </h2>
-            <Link href="/projects"> See all projects </Link>
-          </div>
-          <ul class="not-prose flex flex-col gap-4">
-            {
-              projects.map((project) => (
-                <li>
-                  <ArrowCard entry={project} />
-                </li>
-              ))
-            }
-          </ul>
-        </section>
+        <p class="max-w-[60ch] font-sans text-[0.95rem] leading-relaxed">
+          I write about what works, what breaks, what nearly caught fire, and
+          what somehow got fixed in prod — deep dives on web tech, embedded
+          systems, machine learning and a homelab that keeps growing.
+        </p>
+      </section>
 
-        <section class="animate space-y-4">
-          <h2 class="font-semibold text-black dark:text-white">
-            Let's Connect
+      <section class="animate space-y-4">
+        <h2 class="label"><span class="label-sigil">$</span> cat now</h2>
+        <ul class="space-y-1.5 text-[0.9rem]">
+          {
+            now.map((item) => (
+              <li class="flex gap-3">
+                <span class="select-none opacity-45">—</span>
+                <span>{item}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section class="animate space-y-4">
+        <div class="flex items-baseline gap-4">
+          <h2 class="label flex-1">
+            <span class="label-sigil">$</span> ls posts
           </h2>
-          <article>
-            <p>
-              If you want to get in touch with me about something or just to say
-              hi, reach out on social media or send me an email.
-            </p>
-          </article>
-          <ul class="not-prose flex flex-wrap gap-2">
-            {
-              SOCIALS.map((SOCIAL) => (
-                <li class="flex gap-x-2 text-nowrap">
-                  <Link
-                    href={SOCIAL.HREF}
-                    external
-                    aria-label={`${SITE.TITLE} on ${SOCIAL.NAME}`}
-                  >
-                    {SOCIAL.NAME}
-                  </Link>
-                  {"/"}
-                </li>
-              ))
-            }
-            <li class="line-clamp-1">
-              <Link
-                href={`mailto:${SITE.EMAIL}`}
-                aria-label={`Email ${SITE.TITLE}`}
+          <a
+            href="/blog"
+            class="shrink-0 text-[13px] no-underline transition-colors hover:text-amber"
+            >all &rarr;</a
+          >
+        </div>
+        <ul class="not-prose">
+          {blog.map((post) => <li><EntryRow entry={post} full /></li>)}
+        </ul>
+      </section>
+
+      {
+        projects.length > 0 && (
+          <section class="animate space-y-4">
+            <div class="flex items-baseline gap-4">
+              <h2 class="label flex-1">
+                <span class="label-sigil">$</span> ls projects
+              </h2>
+              <a
+                href="/projects"
+                class="shrink-0 text-[13px] no-underline transition-colors hover:text-amber"
               >
-                {SITE.EMAIL}
-              </Link>
-            </li>
-          </ul>
-        </section>
-      </div>
-    </aside>
+                all &rarr;
+              </a>
+            </div>
+            <ul class="not-prose">
+              {projects.map((project) => (
+                <li>
+                  <EntryRow entry={project} full />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+
+      <section class="animate space-y-4">
+        <h2 class="label"><span class="label-sigil">$</span> cat contact</h2>
+        <p class="max-w-[60ch] font-sans text-[0.95rem]">
+          Reach out if you want to talk about any of this, or just to say hi.
+        </p>
+        <ul class="not-prose flex flex-wrap gap-x-6 gap-y-2 text-[0.9rem]">
+          {
+            SOCIALS.map((social) => (
+              <li>
+                <a
+                  href={social.HREF}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="no-underline transition-colors hover:text-amber"
+                  aria-label={`${SITE.TITLE} on ${social.NAME}`}
+                >
+                  {social.NAME.toLowerCase()}
+                </a>
+              </li>
+            ))
+          }
+          <li>
+            <a
+              href={`mailto:${SITE.EMAIL}`}
+              class="no-underline transition-colors hover:text-amber"
+              >{SITE.EMAIL}</a
+            >
+          </li>
+        </ul>
+      </section>
+    </div>
   </Container>
 </Layout>

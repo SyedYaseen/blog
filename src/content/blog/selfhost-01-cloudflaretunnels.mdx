@@ -1,39 +1,63 @@
 ---
-title: "Serve apps using Cloudflare tunnels"
-description: "Process to setup cloudflare tunnels on coolify to serve apps without exposing ports or port forwarding"
+title: "Serving apps through Cloudflare tunnels"
+description: "Getting a home server onto the internet with no port forwarding, no exposed ports, and free TLS"
 date: "2025-05-09"
-tags: ["coolify", "selfhost", "linux"]
+tags: ["self-hosting", "coolify", "networking"]
 ---
 
-## Why cloudflare tunnel?
-I used cloudflare tunnel to setup a staging env for my apps using my old laptop. CF tunnels has the following benefits
-- No need to expose ports other than 80 and 443. So its secure.
-- No port forwardign in modem to expose ports to internet. So home network is safe.
-- Can setup SSL certs for free using cloudflare
+I wanted a staging environment on the old laptop under my desk without opening
+a hole in my home router. A Cloudflare tunnel does that by inverting the
+connection: the `cloudflared` daemon dials **out** to Cloudflare and holds the
+connection open, and inbound requests come back down that pipe.
 
-## Setup in dashboard
-- Attach domain to Cloudflare by setting nameserver (NS) to cloudflare nameservers
-- Create a tunnel
-    - CloudFlare home -> Zero Trust -> Networks -> Tunnels
-    - Create Tunnel -> Copy `token` (used in next step)
-    - Tunnel -> Public Host Name ->  Add public hostname
-    - *.domainname.com -> service: HTTPS://localhost:443 (Wildcard sub domain)
-    - Additional application settings -> TLS -> origin server name -> *.domainname.com
-    - This will automatically add an entry in DNS table, 
-    - If not add it manually, NAME = *; CNAME = tunnelId.cfargotunnel.com
-    - Repeat steps for base domain and other domains
-    - Multiple domains can be added in same tunnel
+Which means:
 
-- Coolify cloudflared service
-    - Create cloudflared service - set `token` as env
-    - Server -> Wildcard Domain -> https://domainname.com (needs to be https)
-    - Settings -> Instance Settings -> Instance's Domain -> coolify.domainname.com
-    - Other services -> domain -> https://anysubdomain.domainname.com
-    - Services might need their port exposed for local (same network) service access. Not necessary for tunnel access
+- No port forwarding on the router. The home network keeps its inbound deny-all.
+- No listening ports exposed to the internet at all — not even 80 and 443.
+- TLS certificates handled by Cloudflare, free, with no renewal to remember.
+- Your home IP address is never published in DNS.
 
+## Cloudflare dashboard
 
+First, move the domain's nameservers to Cloudflare — the tunnel needs
+Cloudflare to be authoritative for DNS.
 
-## Resources and links
-- https://www.youtube.com/watch?v=cg28Ztt4-os&t=2033s
-- https://coolify.io/docs/knowledge-base/cloudflare/tunnels all-resource#_3-setup-cloudflare-tunnel-on-coolify
-- https://coolify.io/docs/knowledge-base/server/openssh
+Then create the tunnel, at **Zero Trust → Networks → Tunnels**:
+
+- Create Tunnel, and copy the `token` it gives you. That is the credential the
+  daemon authenticates with; it goes in the next step.
+- **Public Hostname → Add public hostname**
+  - Hostname `*.domainname.com` for a wildcard subdomain
+  - Service `HTTPS://localhost:443`
+  - **Additional application settings → TLS → Origin server name** →
+    `*.domainname.com`
+
+That origin server name is easy to skip and it will break TLS if you do —
+Cloudflare validates the certificate your server presents against this name.
+
+Adding the hostname creates the DNS record automatically. If it does not, add
+it by hand: `NAME = *`, `CNAME = <tunnelId>.cfargotunnel.com`.
+
+Repeat for the apex domain. One tunnel can serve as many hostnames as you like,
+so there is no reason to run more than one.
+
+## The cloudflared service in Coolify
+
+- Create a `cloudflared` service and set the tunnel `token` as an environment
+  variable.
+- **Server → Wildcard Domain** → `https://domainname.com`. It must be `https`
+  even though the tunnel terminates TLS.
+- **Settings → Instance Settings → Instance's Domain** →
+  `coolify.domainname.com`
+- Each deployed service gets its own domain:
+  `https://anysubdomain.domainname.com`
+
+Services only need their ports published if you want to reach them directly
+from the local network. Tunnel traffic does not require it — the daemon reaches
+them over Docker's internal network.
+
+## Links
+
+- [Cloudflare tunnels on Coolify](https://coolify.io/docs/knowledge-base/cloudflare/tunnels/all-resource)
+- [Coolify OpenSSH notes](https://coolify.io/docs/knowledge-base/server/openssh)
+- [Walkthrough video](https://www.youtube.com/watch?v=cg28Ztt4-os&t=2033s)

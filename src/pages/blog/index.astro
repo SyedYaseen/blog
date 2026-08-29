@@ -2,23 +2,18 @@
 import { type CollectionEntry, getCollection } from "astro:content";
 import Layout from "@layouts/Layout.astro";
 import Container from "@components/Container.astro";
-import ArrowCard from "@components/ArrowCard.astro";
+import EntryRow from "@components/EntryRow.astro";
 import { BLOG } from "@consts";
 
 const data = (await getCollection("blog"))
   .filter((post) => !post.data.draft)
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
-type Acc = {
-  [year: string]: CollectionEntry<"blog">[];
-};
+type Acc = { [year: string]: CollectionEntry<"blog">[] };
 
 const posts = data.reduce((acc: Acc, post) => {
   const year = post.data.date.getFullYear().toString();
-  if (!acc[year]) {
-    acc[year] = [];
-  }
-  acc[year].push(post);
+  (acc[year] ??= []).push(post);
   return acc;
 }, {});
 
@@ -27,29 +22,31 @@ const years = Object.keys(posts).sort((a, b) => parseInt(b) - parseInt(a));
 
 <Layout title={BLOG.TITLE} description={BLOG.DESCRIPTION}>
   <Container>
-    <aside data-pagefind-ignore>
-      <div class="space-y-10">
-        <div class="space-y-4">
-          {
-            years.map((year) => (
-              <section class="animate space-y-4">
-                <div class="font-semibold text-black dark:text-white">
-                  {year}
-                </div>
-                <div>
-                  <ul class="not-prose flex flex-col gap-4">
-                    {posts[year].map((post) => (
-                      <li>
-                        <ArrowCard entry={post} />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </section>
-            ))
-          }
-        </div>
-      </div>
-    </aside>
+    <div data-pagefind-ignore class="space-y-14">
+      <header class="animate space-y-3">
+        <h1 class="text-xl font-semibold tracking-tight text-silk">Blog</h1>
+        <p class="max-w-[62ch] font-sans text-[0.95rem]">{BLOG.DESCRIPTION}</p>
+        <p class="text-[13px]">
+          {data.length} posts
+        </p>
+      </header>
+
+      {
+        years.map((year) => (
+          <section class="animate space-y-4">
+            <h2 class="label">
+              <span class="label-sigil">$</span> ls {year}
+            </h2>
+            <ul class="not-prose">
+              {posts[year].map((post) => (
+                <li>
+                  <EntryRow entry={post} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      }
+    </div>
   </Container>
 </Layout>

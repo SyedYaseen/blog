@@ -2,42 +2,52 @@
 import TableOfContentsHeading from "./TableOfContentsHeading.astro";
 
 // https://kld.dev/building-table-of-contents/
-const { headings } = Astro.props;
-const toc = buildToc(headings);
-
 export interface Heading {
   depth: number;
   slug: string;
   text: string;
 }
 
+const { headings } = Astro.props;
+
 function buildToc(headings: Heading[]) {
-  const toc: Heading[] = [];
+  const toc: any[] = [];
   const parentHeadings = new Map();
-  headings.forEach((h) => {
-    const heading = { ...h, subheadings: [] };
-    parentHeadings.set(heading.depth, heading);
-    if (heading.depth === 2) {
-      toc.push(heading);
-    } else {
-      parentHeadings.get(heading.depth - 1).subheadings.push(heading);
-    }
-  });
+  // Only h2 and below; a stray h1 in post body would otherwise have no parent.
+  headings
+    .filter((h) => h.depth >= 2)
+    .forEach((h) => {
+      const heading = { ...h, subheadings: [] };
+      parentHeadings.set(heading.depth, heading);
+      const parent = parentHeadings.get(heading.depth - 1);
+      if (heading.depth === 2 || !parent) {
+        toc.push(heading);
+      } else {
+        parent.subheadings.push(heading);
+      }
+    });
   return toc;
 }
+
+const toc = buildToc(headings);
 ---
 
-<details
-  open
-  class="animate group rounded-lg border border-black/15 dark:border-white/20"
->
-  <summary
-    class="cursor-pointer rounded-t-lg px-3 py-1.5 font-medium transition-colors group-open:bg-black/5 hover:bg-black/5 dark:group-open:bg-white/5 hover:dark:bg-white/5"
-    >Table of Contents</summary
-  >
-  <nav>
-    <ul class="py-3">
-      {toc.map((heading) => <TableOfContentsHeading heading={heading} />)}
-    </ul>
-  </nav>
-</details>
+{
+  toc.length > 1 && (
+    <details open={toc.length <= 6} data-pagefind-ignore class="animate group border border-rule">
+      <summary class="cursor-pointer list-none px-3 py-2 text-[13px] transition-colors hover:text-amber">
+        <span class="text-amber">$</span> outline
+        <span class="float-right opacity-60 transition-transform group-open:rotate-90">
+          &rsaquo;
+        </span>
+      </summary>
+      <nav class="border-t border-rule">
+        <ul class="py-2 leading-normal">
+          {toc.map((heading) => (
+            <TableOfContentsHeading heading={heading} />
+          ))}
+        </ul>
+      </nav>
+    </details>
+  )
+}

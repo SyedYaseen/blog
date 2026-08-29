@@ -1,13 +1,38 @@
 ---
-title: "Rusty Book Shelf"
-description: "Custom implementation of Audiobookshelf on Rust for low power devices"
+title: "Rusty Bookshelf"
+description: "An Audiobookshelf-style audiobook server rewritten in Rust, small enough to run on a Pi Zero 2 W"
 date: "2025-07-21"
-tags: ["rust", "audiobooks", "software"]
-draft: true
+tags: ["rust", "raspberry-pi", "self-hosting"]
 ---
 
-## Mount an SSD with Pi Zero 2W
-1. `lsblk` lists all storage devices.
-2. `sudo blkid /dev/sda1` gets the fs type.
-3. If its ext4 create a mount path `sudo mkdir -p /mnt/ssd`
-4. Mount partition `sudo mount /dev/sda1 /mnt/ssd`
+Audiobookshelf is good software and I used it happily until I tried to run it
+on a Pi Zero 2 W. The Node runtime plus the scanning process is more than
+512 MB of RAM wants to give, and the box spent most of its time swapping.
+
+So this is the subset I actually use, written in Rust: scan a library
+directory, serve the files, and remember where I stopped listening. No
+transcoding, no metadata scraping, no web-based library management. The target
+is a device with half a gigabyte of memory and an SD card for storage, and
+every feature has to justify itself against that.
+
+## Status
+
+Early. The storage layer works and the scanner walks a library directory;
+playback position sync is the piece I am on now.
+
+## Hardware
+
+A Pi Zero 2 W with a USB SSD for the library. The SD card is for the OS only —
+audiobook files on an SD card wear it out and read too slowly to seek
+comfortably.
+
+```sh
+lsblk                             # find the partition
+sudo blkid /dev/sda1              # confirm the filesystem type
+sudo mkdir -p /mnt/ssd
+sudo mount /dev/sda1 /mnt/ssd
+```
+
+That mount does not survive a reboot, which on a headless device means the
+library silently disappears. The fstab entry that fixes it is in
+[mounting a drive at a path that stays put](/blog/linux-03-mountdrives).

@@ -5,12 +5,12 @@ import Container from "@components/Container.astro";
 import FormattedDate from "@components/FormattedDate.astro";
 import { readingTime } from "@lib/utils";
 import BackToPrevious from "@components/BackToPrevious.astro";
-import Link from "@components/Link.astro";
 import TableOfContents from "@components/TableOfContents.astro";
+import { tagSlug } from "@lib/utils";
 
 export async function getStaticPaths() {
   const projects = (await getCollection("projects"))
-    .filter((post) => !post.data.draft)
+    .filter((project) => !project.data.draft)
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
   return projects.map((project) => ({
     params: { id: project.id },
@@ -26,44 +26,65 @@ const { Content, headings } = await render(project);
 <Layout title={project.data.title} description={project.data.description}>
   <Container>
     <div class="animate">
-      <BackToPrevious href="/projects">Back to projects</BackToPrevious>
+      <BackToPrevious href="/projects">All projects</BackToPrevious>
     </div>
-    <div class="animate my-10 space-y-1">
-      <div class="flex items-center gap-1.5">
-        <div class="font-base text-sm">
-          <FormattedDate date={project.data.date} />
-        </div>
-        &bull;
-        {project.body && (
-          <div class="font-base text-sm">
-            {readingTime(project.body)}
-          </div>
-        )}     
-      </div>
-      <h1 class="text-3xl font-semibold text-black dark:text-white">
+
+    <div data-pagefind-body>
+    <header class="animate mt-8 mb-10 space-y-4">
+      <h1 class="text-2xl leading-snug font-semibold tracking-tight text-silk">
         {project.data.title}
       </h1>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]" data-pagefind-ignore>
+        <FormattedDate date={project.data.date} />
+        {project.body && <span class="text-rule">/</span>}
+        {project.body && <span>{readingTime(project.body)}</span>}
+      </div>
       {
         (project.data.demoURL || project.data.repoURL) && (
-          <nav class="flex gap-1">
+          <nav class="flex flex-wrap gap-2" data-pagefind-ignore>
             {project.data.demoURL && (
-              <Link href={project.data.demoURL} external>
-                demo
-              </Link>
+              <a
+                href={project.data.demoURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="chip"
+              >
+                demo &nearr;
+              </a>
             )}
-            {project.data.demoURL && project.data.repoURL && <span>/</span>}
             {project.data.repoURL && (
-              <Link href={project.data.repoURL} external>
-                repo
-              </Link>
+              <a
+                href={project.data.repoURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="chip"
+              >
+                repo &nearr;
+              </a>
             )}
           </nav>
         )
       }
-    </div>
+      {
+        project.data.tags && project.data.tags.length > 0 && (
+          <ul class="not-prose flex flex-wrap gap-2" data-pagefind-ignore>
+            {project.data.tags.map((tag) => (
+              <li>
+                <a href={`/tags/${tagSlug(tag)}`} class="chip">
+                  {tag}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </header>
+
     <TableOfContents headings={headings} />
-    <article class="animate">
+
+    <article class="animate mt-10">
       <Content />
     </article>
+    </div>
   </Container>
 </Layout>

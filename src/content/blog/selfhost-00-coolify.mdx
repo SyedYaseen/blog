@@ -1,70 +1,116 @@
 ---
-title: "Coolify setup on Old Laptop"
-description: "Commands to setup coolify on a old laptop or a VPS"
+title: "Coolify on an old laptop"
+description: "Turning a retired laptop into a deploy target, and locking down SSH and the firewall before it faces the internet"
 date: "2025-05-09"
-tags: ["coolify", "selfhost", "linux"]
+tags: ["self-hosting", "coolify", "linux"]
 ---
 
-## Install Coolify on a Local Ubuntu (or other) old laptop/server
+Coolify is a self-hosted Heroku — you point it at a git repo, it builds and
+runs the container. An old laptop is close to ideal hardware for it: it has a
+battery, so it rides out power cuts, and the fans are already loud enough that
+you will notice if something goes wrong.
 
-### Installation
-Install as root with `sudo su`. Use `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash`
-to start install
+The install is one command. The hardening afterwards is the part worth reading,
+because this machine is about to be reachable from outside your network.
 
-[Serve your apps on the internet securely using cloudflare tunnels](/blog/selfhost-01-cloudflaretunnels)
+## Install
 
-### User creation
-Add a new user that has root access
-``` sh
+Run as root:
+
+```sh
+sudo su
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash
+```
+
+Coolify then serves its dashboard on port 8000. To expose the apps it deploys
+without opening ports on your router, see
+[serving apps through Cloudflare tunnels](/blog/selfhost-01-cloudflaretunnels).
+
+## Create an admin user
+
+Do not keep working as root. Make a user with sudo rights and use that:
+
+```sh
 sudo adduser myadmin
 sudo usermod -aG sudo myadmin
 ```
-## Secure the VPS/ Laptop
 
-### Disable pwd auth
-Edit /etc/ssh/sshd_config
+Log in as the new user and confirm `sudo` works **before** you go on to disable
+password login. Locking yourself out of a headless box is a trip to find a
+monitor.
 
-`sudo nano /etc/ssh/sshd_config`
+## Disable password authentication
 
-Set the following flags on the file
+Once your SSH key is on the machine ([how to get it
+there](/blog/linux-01-sshkeys)), turn off passwords entirely. An
+internet-facing box gets brute-forced within hours; keys make that pointless.
 
-- PermitRootLogin prohibit-password
-- PasswordAuthentication no
-- PermitEmptyPasswords no
-
-### Firewall Hardening
-optional since it caused some issues when I first set it up
+```sh
+sudo nano /etc/ssh/sshd_config
 ```
+
+```
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+PermitEmptyPasswords no
+```
+
+```sh
+sudo systemctl restart ssh
+```
+
+Keep your current session open while you test a new one in another terminal. If
+the key does not work you still have a way back in.
+
+## Firewall
+
+I skipped this on the first pass and it caused problems later, so it is worth
+doing deliberately. Default-deny inbound, allow outbound:
+
+```sh
 sudo ufw reset
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 ```
 
-#### Allow only SSH, HTTP, HTTPS
-```
+Then open only SSH and the web ports:
+
+```sh
 sudo ufw allow OpenSSH
 sudo ufw allow 80,443/tcp
 ```
 
-#### Optional: limit SSH brute force
-`sudo ufw limit OpenSSH`
+`limit` rate-limits repeated SSH connection attempts from one address — cheap
+protection against brute force:
 
-#### Save changes
+```sh
+sudo ufw limit OpenSSH
 ```
+
+Enable and check:
+
+```sh
 sudo ufw enable
 sudo ufw status verbose
 ```
 
-#### Sample firewall after changes
-This is how it would look like Firewall is active and enabled on system startup Status: active Logging: on (low) Default: deny (incoming), allow (outgoing), deny (routed) New profiles: skip
+You are looking for something like this:
 
-To Action From
+```
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
 
-- 22/tcp (OpenSSH) LIMIT IN Anywhere
-- 80,443/tcp ALLOW IN Anywhere
-- 22/tcp (OpenSSH (v6)) LIMIT IN Anywhere (v6)
-- 80,443/tcp (v6) ALLOW IN Anywhere (v6)
+To                         Action      From
+--                         ------      ----
+22/tcp (OpenSSH)           LIMIT IN    Anywhere
+80,443/tcp                 ALLOW IN    Anywhere
+22/tcp (OpenSSH (v6))      LIMIT IN    Anywhere (v6)
+80,443/tcp (v6)            ALLOW IN    Anywhere (v6)
+```
 
----
-
-
+Note what is *not* in that list: port 8000. The Coolify dashboard stays
+reachable only from the local network, which is exactly where you want an admin
+panel. Enable the firewall while you are still connected — `ufw` does not drop
+established sessions, but it is worth knowing that before you find out.

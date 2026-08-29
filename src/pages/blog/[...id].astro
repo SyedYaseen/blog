@@ -3,20 +3,16 @@ import { type CollectionEntry, getCollection, render } from "astro:content";
 import Layout from "@layouts/Layout.astro";
 import Container from "@components/Container.astro";
 import FormattedDate from "@components/FormattedDate.astro";
-import { readingTime } from "@lib/utils";
+import { readingTime, tagSlug } from "@lib/utils";
 import BackToPrevious from "@components/BackToPrevious.astro";
 import PostNavigation from "@components/PostNavigation.astro";
 import TableOfContents from "@components/TableOfContents.astro";
-import Giscus from "@components/Giscus.astro";
 
 export async function getStaticPaths() {
   const posts = (await getCollection("blog"))
     .filter((post) => !post.data.draft)
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
-  return posts.map((post) => ({
-    params: { id: post.id },
-    props: post,
-  }));
+  return posts.map((post) => ({ params: { id: post.id }, props: post }));
 }
 type Props = CollectionEntry<"blog">;
 
@@ -24,28 +20,9 @@ const posts = (await getCollection("blog"))
   .filter((post) => !post.data.draft)
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
-function getNextPost() {
-  let postIndex;
-  for (const post of posts) {
-    if (post.id === Astro.params.id) {
-      postIndex = posts.indexOf(post);
-      return posts[postIndex + 1];
-    }
-  }
-}
-
-function getPrevPost() {
-  let postIndex;
-  for (const post of posts) {
-    if (post.id === Astro.params.id) {
-      postIndex = posts.indexOf(post);
-      return posts[postIndex - 1];
-    }
-  }
-}
-
-const nextPost = getNextPost();
-const prevPost = getPrevPost();
+const index = posts.findIndex((post) => post.id === Astro.params.id);
+const prevPost = index > 0 ? posts[index - 1] : undefined;
+const nextPost = index > -1 ? posts[index + 1] : undefined;
 
 const post = Astro.props;
 const { Content, headings } = await render(post);
@@ -54,47 +31,43 @@ const { Content, headings } = await render(post);
 <Layout title={post.data.title} description={post.data.description}>
   <Container>
     <div class="animate">
-      <BackToPrevious href="/blog">Back to blog</BackToPrevious>
+      <BackToPrevious href="/blog">All posts</BackToPrevious>
     </div>
-    <div class="my-10 space-y-1">
-      <div class="animate flex items-center gap-1.5">
-        <div class="font-base text-sm">
-          <FormattedDate date={post.data.date} />
-        </div>
-        &bull;
-        {post.body && (
-          <div class="font-base text-sm">
-            {readingTime(post.body)}
-          </div>
-        )}        
-      </div>
-      <h1 class="animate text-3xl font-semibold text-black dark:text-white">
+
+    <div data-pagefind-body>
+    <header class="animate mt-8 mb-10 space-y-4">
+      <h1 class="text-2xl leading-snug font-semibold tracking-tight text-silk">
         {post.data.title}
       </h1>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]" data-pagefind-ignore>
+        <FormattedDate date={post.data.date} />
+        {post.body && <span class="text-rule">/</span>}
+        {post.body && <span>{readingTime(post.body)}</span>}
+      </div>
       {
-        post.data.tags && post.data.tags?.length > 0 ? (
-          <div class="animate flex gap-2 pt-1">
+        post.data.tags && post.data.tags.length > 0 && (
+          <ul class="not-prose flex flex-wrap gap-2" data-pagefind-ignore>
             {post.data.tags.map((tag) => (
-              <a
-                href={`/tags/${tag}`}
-                class="rounded-sm border border-black/15 px-2 py-1 text-sm transition-colors duration-300 ease-in-out hover:bg-black/5 hover:text-black focus-visible:bg-black/5 focus-visible:text-black dark:border-white/20 dark:hover:bg-white/5 dark:hover:text-white dark:focus-visible:bg-white/5 dark:focus-visible:text-white"
-              >
-                {tag}
-              </a>
+              <li>
+                <a href={`/tags/${tagSlug(tag)}`} class="chip">
+                  {tag}
+                </a>
+              </li>
             ))}
-          </div>
-        ) : null
+          </ul>
+        )
       }
-    </div>
-    {headings.length > 0 && <TableOfContents headings={headings} />}
-    <article class="animate">
+    </header>
+
+    <TableOfContents headings={headings} />
+
+    <article class="animate mt-10">
       <Content />
-      <div class="mt-24">
-        <PostNavigation prevPost={prevPost} nextPost={nextPost} />
-      </div>
-      <div class="mt-24">
-        <Giscus />
-      </div>
     </article>
+    </div>
+
+    <div class="animate mt-20">
+      <PostNavigation prevPost={prevPost} nextPost={nextPost} />
+    </div>
   </Container>
 </Layout>

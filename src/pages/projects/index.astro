@@ -2,7 +2,7 @@
 import { getCollection } from "astro:content";
 import Layout from "@layouts/Layout.astro";
 import Container from "@components/Container.astro";
-import ArrowCard from "@components/ArrowCard.astro";
+import EntryRow from "@components/EntryRow.astro";
 import { PROJECTS } from "@consts";
 
 const projects = (await getCollection("projects"))
@@ -12,21 +12,32 @@ const projects = (await getCollection("projects"))
 
 <Layout title={PROJECTS.TITLE} description={PROJECTS.DESCRIPTION}>
   <Container>
-    <aside data-pagefind-ignore>
-      <div class="space-y-10">
-        <div class="animate font-semibold text-black dark:text-white">
-          Projects
-        </div>
-        <ul class="animate not-prose flex flex-col gap-4">
-          {
-            projects.map((project) => (
+    <div data-pagefind-ignore class="space-y-14">
+      <header class="animate space-y-3">
+        <h1 class="text-xl font-semibold tracking-tight text-silk">Projects</h1>
+        <p class="max-w-[62ch] font-sans text-[0.95rem]">
+          {PROJECTS.DESCRIPTION}
+        </p>
+      </header>
+
+      {
+        projects.length > 0 ? (
+          <ul class="animate not-prose">
+            {projects.map((project) => (
               <li>
-                <ArrowCard entry={project} />
+                <EntryRow entry={project} full />
               </li>
-            ))
-          }
-        </ul>
-      </div>
-    </aside>
+            ))}
+          </ul>
+        ) : (
+          <p class="animate text-[0.95rem]">
+            Nothing published here yet. The work in progress is on <a
+              href="https://github.com/syedyaseen"
+              class="text-silk underline decoration-rule underline-offset-4 transition-colors hover:text-amber"
+            >GitHub</a>.
+          </p>
+        )
+      }
+    </div>
   </Container>
 </Layout>

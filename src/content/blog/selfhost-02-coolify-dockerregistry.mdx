@@ -1,0 +1,75 @@
+---
+title: "A private Docker registry on Coolify"
+description: "Running your own registry as a staging target, with basic auth, and pushing images to it from a build server"
+date: "2025-05-09"
+tags: ["self-hosting", "coolify", "docker"]
+---
+
+Building images on the production box means production is doing compile work
+while it serves traffic, and it needs the source checked out. A private
+registry breaks that apart: build somewhere else, push the image, and let
+production pull a finished artefact.
+
+Docker Hub can do this too, but a self-hosted registry keeps private images off
+a third party and has no pull rate limits.
+
+## Create the password file
+
+The registry image has no authentication of its own — it expects a reverse
+proxy or an htpasswd file. `htpasswd` comes from the Apache utils:
+
+```sh
+sudo apt install apache2-utils
+
+mkdir -p ./auth
+htpasswd -Bbn username 'password' > ./auth/registry.password
+```
+
+- `-B` forces bcrypt. The registry rejects the older algorithms, and the error
+  it gives you does not say so.
+- `-b` takes the password as an argument rather than prompting, so it scripts.
+- `-n` writes to stdout instead of modifying a file in place, which is what
+  lets the `>` redirect work.
+
+Since the password ends up in your shell history, prefix the command with a
+space or clear the entry afterwards.
+
+## Mount it into the container
+
+In the Coolify service definition:
+
+```yaml
+volumes:
+  - type: bind
+    source: /data/coolify/auth/registry.password
+    target: /auth/registry.password
+    isDirectory: false
+```
+
+`isDirectory: false` is required. Without it Docker sees a missing path and
+helpfully creates a *directory* at that name, and the registry then fails to
+start because the credentials file it expected is a folder.
+
+## Push an image
+
+```sh
+docker login localhost:5000
+
+docker tag my-app:latest localhost:5000/my-app:latest
+docker push localhost:5000/my-app:latest
+```
+
+Tagging is the step that does the work — the registry address is part of the
+image name, so `docker push` knows where to send it from the tag alone.
+
+`localhost:5000` is treated as an insecure registry by default, which is fine
+locally. Reaching it from another machine means either putting it behind TLS
+(a [Cloudflare tunnel](/blog/selfhost-01-cloudflaretunnels) does this) or
+adding it to `insecure-registries` in `/etc/docker/daemon.json` on every client
+— only acceptable on a trusted network.
+
+## Links
+
+- [Cloudflare tunnels on Coolify](https://coolify.io/docs/knowledge-base/cloudflare/tunnels/all-resource)
+- [Coolify OpenSSH notes](https://coolify.io/docs/knowledge-base/server/openssh)
+- [Walkthrough video](https://www.youtube.com/watch?v=cg28Ztt4-os&t=2033s)

@@ -1,43 +1,39 @@
 ---
-import { getCollection } from "astro:content";
 import Layout from "@layouts/Layout.astro";
 import Container from "@components/Container.astro";
-import ArrowCard from "@components/ArrowCard.astro";
+import EntryRow from "@components/EntryRow.astro";
 import BackToPrevious from "@components/BackToPrevious.astro";
+import { getTagGroups } from "@lib/tags";
 
 export async function getStaticPaths() {
-  const posts = await getCollection("blog", ({ data }) => !data.draft);
+  const groups = await getTagGroups();
 
-  // Get unique tags
-  const tags = [...new Set(posts.flatMap((post) => post.data.tags || []))];
-
-  // Create paths for each tag
-  return tags.map((tag) => ({
-    params: { id: tag },
-    props: {
-      posts: posts.filter((post) => post.data.tags?.includes(tag)),
-    },
+  return groups.map((group) => ({
+    params: { id: group.slug },
+    props: { label: group.label, entries: group.entries },
   }));
 }
 
-const { id } = Astro.params;
-const { posts } = Astro.props;
-
-// Sort posts by date, most recent first
-const sortedPosts = posts.sort(
-  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
-);
+const { label, entries } = Astro.props;
 ---
 
-<Layout title={`Tag: ${id}`} description={`Posts with the tag: ${id}`}>
+<Layout title={`Tagged ${label}`} description={`Posts tagged ${label}.`}>
   <Container>
-    <div class="space-y-10" data-pagefind-ignore>
-      <BackToPrevious href="/tags"> All tags </BackToPrevious>
-      <h1 class="animate font-semibold text-black dark:text-white">
-        Posts tagged with "{id}"
-      </h1>
-      <ul class="animate flex flex-col gap-4">
-        {sortedPosts.map((post) => <ArrowCard entry={post} />)}
+    <div data-pagefind-ignore class="space-y-10">
+      <div class="animate">
+        <BackToPrevious href="/tags">All tags</BackToPrevious>
+      </div>
+      <header class="animate space-y-2">
+        <h1 class="text-xl font-semibold tracking-tight text-silk">
+          <span class="text-amber">#</span>{label}
+        </h1>
+        <p class="text-[13px]">
+          {entries.length}
+          {entries.length === 1 ? "entry" : "entries"}
+        </p>
+      </header>
+      <ul class="animate not-prose">
+        {entries.map((entry) => <li><EntryRow entry={entry} full /></li>)}
       </ul>
     </div>
   </Container>

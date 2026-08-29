@@ -1,17 +1,41 @@
 ---
-title: "Useful Linux Commands"
-description: "Random collection of useful linux commands"
+title: "Linux commands I keep forgetting"
+description: "A running scratchpad of the commands I look up often enough to stop looking up"
 date: "2025-05-09"
-tags: ["linux", "bash", "scriting"]
-draft: true
+tags: ["linux", "shell"]
 ---
 
-## Check network use
-Install iftop `sudo apt install iftop`
-Find current network interfaces `ip addr`
-Monitor using iftop `sudo iftop -i proton0`
+This is a scratchpad, not a tutorial. Every command here is one I have looked
+up more than twice, which is the threshold at which I decided it was cheaper to
+write it down than to search for it again. It grows as I hit new ones.
 
-## Set alias or add variable to .bashrc
+## Watch which process is eating the network
 
+`iftop` gives you a live, per-connection view of bandwidth, which is the
+quickest way to answer "why is my upload saturated". It needs an interface name,
+so list them first.
+
+```sh
+sudo apt install iftop
+
+ip addr              # find the interface name — eth0, wlan0, proton0, ...
+sudo iftop -i proton0
+```
+
+The interface matters more than it looks. If you are on a VPN, watching `eth0`
+shows you encrypted tunnel traffic in one lump; watching the tunnel interface
+(`proton0` here) shows you the actual destinations.
+
+## Append an alias or variable to .bashrc
+
+Editing `.bashrc` in an editor is fine, but appending from the shell is faster
+and scripts cleanly. `source` reloads it so the change applies to the shell you
+are already in, instead of only to the next one you open.
+
+```sh
 echo "alias arrrg='ls -lah --color=auto'" >> ~/.bashrc && source ~/.bashrc
-echo "arrrg='somevariable'" >> ~/.bashrc && source ~/.bashrc
+echo "export SOMEVAR='somevalue'" >> ~/.bashrc && source ~/.bashrc
+```
+
+Use `>>` and not `>`. A single `>` truncates the file, and truncating `.bashrc`
+is a bad afternoon.

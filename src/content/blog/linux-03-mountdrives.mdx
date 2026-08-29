@@ -1,26 +1,79 @@
 ---
-title: "Mount drives"
-description: "Mount drives to a path"
+title: "Mounting a drive at a path that stays put"
+description: "Finding the partition, mounting it, and adding the fstab entry so it survives a reboot"
 date: "2025-08-12"
-tags: ["linux", "external drive"]
+tags: ["linux", "raspberry-pi", "storage"]
 ---
 
-Get Wireguard configs from https://account.protonvpn.com/downloads
+Mounting a drive is two commands. Mounting it so it is still there after a
+power cut is the part that actually matters, and it is the part I forgot the
+first time — I had an SSD full of audiobooks that vanished from `/mnt` every
+time the Pi rebooted.
 
-## List drives
+## Find the partition
+
+```sh
+lsblk
 ```
-user@host:/ $ lsblk
+
+```
 NAME        MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
-sda           8:0    0 111.8G  0 disk 
+sda           8:0    0 111.8G  0 disk
 └─sda1        8:1    0 111.8G  0 part /mnt/audiobooks
-mmcblk0     179:0    0  29.7G  0 disk 
+mmcblk0     179:0    0  29.7G  0 disk
 ├─mmcblk0p1 179:1    0   512M  0 part /boot/firmware
 └─mmcblk0p2 179:2    0  29.2G  0 part /
 ```
 
-## Mount to location
+You want the **partition**, not the disk — `sda1`, not `sda`. `sda` is the
+whole device and has no filesystem on it to mount. The `mmcblk0` entries are
+the Pi's SD card: that is the running system, leave it alone.
+
+An empty `MOUNTPOINTS` column means the partition is not mounted yet, which is
+the state you are looking for.
+
+## Mount it
+
+```sh
+sudo blkid /dev/sda1              # confirm the filesystem type
+sudo mkdir -p /mnt/mymountpoint
+sudo mount /dev/sda1 /mnt/mymountpoint
 ```
-user@host:/dev $ sudo mkdir /mnt/mymountpoint
-user@host:/dev $ sudo mount /dev/sda1 /mnt/mymountpoint
-user@host:/dev $ cd /mnt/mymountpoint
+
+`blkid` is worth the extra second. If it comes back `ntfs` you need
+`ntfs-3g` installed, and if it comes back with nothing the partition is
+unformatted and `mount` will fail with an unhelpful error about the superblock.
+
+Mounting onto a directory that already has files in it does not delete them —
+it hides them until you unmount. That is a confusing five minutes if you do it
+by accident.
+
+## Make it survive a reboot
+
+`mount` lasts until the next boot. For anything permanent, add it to
+`/etc/fstab`, and refer to the partition by **UUID** rather than `/dev/sda1` —
+device names are assigned in detection order, so plugging in a second drive can
+silently renumber them and mount the wrong disk.
+
+```sh
+sudo blkid /dev/sda1              # copy the UUID="..." value
+sudo nano /etc/fstab
 ```
+
+```
+UUID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  /mnt/mymountpoint  ext4  defaults,nofail  0  2
+```
+
+`nofail` is the one to not skip. Without it, a missing or dead drive stops the
+boot and drops you into an emergency shell — which on a headless Pi means a
+machine that simply never comes back on the network.
+
+Test before you trust it:
+
+```sh
+sudo umount /mnt/mymountpoint
+sudo mount -a                     # mounts everything in fstab
+```
+
+If `mount -a` is silent, the entry is good. If it complains, fix it now, while
+you still have a running system to fix it from.

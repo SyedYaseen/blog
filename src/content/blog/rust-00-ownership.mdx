@@ -1,8 +1,8 @@
 ---
-title: "Rust101"
-description: "Notes and thoughts on Rust Basics"
+title: "Rust, from ownership to async"
+description: "Working notes on the whole Rust model — ownership, borrowing, modules, generics, lifetimes, smart pointers, threads and tokio"
 date: "2025-07-11"
-tags: ["ownership", "generics","rust"]
+tags: ["rust", "async"]
 ---
 
 ## Ownership
@@ -437,7 +437,7 @@ ref with shortest lifetime.
 an err. `string2 does not live long enough`
 
 > Same rules apply to Structs holding references
-```
+```rust
 struct Book<'a> {
     author: &'a str,
     title: &'a str,
@@ -510,7 +510,7 @@ println!("{:#?}", bb);
 1. Child cant keep parent alive, (i.e) if parent is out of scope, child is also gone. Weak ref will not stop this from happening or linger on heap as orphan. Created using Rc::downgrade
 2. Parent is a strong ref, hence owns the children.
 
-```
+```rust
 struct Node {
     name: String,
     parent: RefCell<Weak<Node>>,
@@ -731,7 +731,7 @@ it causes resource starvation.
 
 ### Task execution
 
-```
+```rust
 #[tokio::main]
 async fn main() {
     let task1 = tokio::spawn(async {

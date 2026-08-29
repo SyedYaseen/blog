@@ -1,19 +1,41 @@
 ---
 import Layout from "@layouts/Layout.astro";
 import Container from "@components/Container.astro";
-import BackToPrevious from "@components/BackToPrevious.astro";
 import { SITE } from "@consts";
 ---
 
-<Layout title="404" description={SITE.DESCRIPTION}>
+<Layout title="404" description="That page does not exist.">
   <Container>
-    <div class="mt-16 grid place-items-center gap-3">
-      <h4 class="animate text-2xl font-semibold text-black dark:text-white">
-        404: Page not found
-      </h4>
-      <span class="animate">
-        <BackToPrevious href="/">Go to home page</BackToPrevious>
-      </span>
+    <div class="animate max-w-[52ch] space-y-5">
+      <p class="text-[13px]">
+        <span class="text-amber">$</span> cat {Astro.url.pathname}
+      </p>
+      <h1 class="text-xl font-semibold tracking-tight text-silk">
+        No such file or directory<span class="cursor ml-1.5" aria-hidden="true"
+        ></span>
+      </h1>
+      <p class="font-sans text-[0.95rem]">
+        That page is not here. It may have been renamed, or it may never have
+        existed.
+      </p>
+      <ul class="not-prose flex flex-wrap gap-x-6 gap-y-2 text-[0.9rem]">
+        <li>
+          <a href="/" class="no-underline transition-colors hover:text-amber"
+            >home</a
+          >
+        </li>
+        <li>
+          <a href="/blog" class="no-underline transition-colors hover:text-amber"
+            >all posts</a
+          >
+        </li>
+        <li>
+          <a href="/tags" class="no-underline transition-colors hover:text-amber"
+            >tags</a
+          >
+        </li>
+      </ul>
+      <p class="sr-only">{SITE.TITLE}</p>
     </div>
   </Container>
 </Layout>

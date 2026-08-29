@@ -1,25 +1,88 @@
 ---
-title: "SSH keys for Github"
-description: "Create SSH keys to access github"
+title: "SSH keys for GitHub"
+description: "Generating a dedicated key pair, wiring it into ~/.ssh/config, and pushing the public half where it belongs"
 date: "2025-05-12"
-tags: ["linux", "bash", "scripting"]
+tags: ["linux", "ssh"]
 ---
 
-## Steps
-1. Create folder `mkdir /home/user/.ssh/folder` if not already exists
-2. `ssh-keygen` -> Enter folder and file name of key
-3. Change ownership of folder `sudo chown -R user:user /home/user/.ssh/folder/keyname`
-4. Add key to ssh `ssh-add /home/user/.ssh/folder/keyname`
-5. Update config `nano ~/.ssh/config`
-6. Private key is kept on our machine
-7. Public key is copied to the remote host. Use `ssh-copy-id`.
+The mental model that makes the rest of this obvious: the **private** key never
+leaves your machine, and the **public** key gets copied to whatever you want to
+log into. GitHub, a VPS, a Raspberry Pi — same key pair, same two halves, and
+only the destination changes.
+
+I keep a separate key per service rather than reusing one everywhere. If a key
+ever has to be revoked, revoking it should cost me one service, not all of them.
+
+## Generate the key
+
+```sh
+mkdir -p ~/.ssh/github
+ssh-keygen -t ed25519 -f ~/.ssh/github/id_ed25519 -C "github"
+```
+
+`-t ed25519` picks the modern key type — shorter than RSA and faster, with no
+key-size decision to get wrong. `-f` writes it where you want it instead of
+overwriting the default `~/.ssh/id_ed25519`, which is the mistake that costs
+you an existing key.
+
+If the permissions end up wrong (this happens when you create the folder as
+root), SSH will silently refuse to use the key:
+
+```sh
+sudo chown -R "$USER:$USER" ~/.ssh/github
+chmod 700 ~/.ssh/github
+chmod 600 ~/.ssh/github/id_ed25519
+```
+
+SSH is strict here on purpose. A private key readable by other users on the
+machine is treated as compromised, and the client would rather fail than use it.
+
+## Tell SSH to use it
+
+Add the key to the running agent so you are not retyping the passphrase:
+
+```sh
+ssh-add ~/.ssh/github/id_ed25519
+```
+
+Then make it permanent in `~/.ssh/config`, so `git` picks the right key without
+being told:
+
 ```
 Host github.com
   User git
-  IdentityFile /path/to/your/custom_key
+  IdentityFile ~/.ssh/github/id_ed25519
+  IdentitiesOnly yes
 ```
-6. Copy key.pub to https://github.com/settings/keys
 
-Tip:
-Above steps applicable for any service or server and if that server needs to get the pub key for SSH access into it,
-`ssh-copy-id -i ~/.ssh/keyname.pub user@ipaddr`
+`IdentitiesOnly yes` matters more than it looks. Without it SSH offers every key
+it knows about in turn, and GitHub drops the connection after too many failed
+offers — which surfaces as a confusing "Too many authentication failures"
+rather than anything about the key you actually meant to use.
+
+## Hand over the public half
+
+For GitHub, paste the contents of the `.pub` file into
+[github.com/settings/keys](https://github.com/settings/keys):
+
+```sh
+cat ~/.ssh/github/id_ed25519.pub
+```
+
+For a server you can already log into with a password, `ssh-copy-id` does the
+same job — it appends the public key to `~/.ssh/authorized_keys` on the remote
+and fixes the permissions for you:
+
+```sh
+ssh-copy-id -i ~/.ssh/github/id_ed25519.pub user@192.168.1.10
+```
+
+## Check it worked
+
+```sh
+ssh -T git@github.com
+```
+
+GitHub never gives you a shell, so a successful connection greets you by name
+and then closes. That "error" is the success case. If it fails instead,
+`ssh -vvv git@github.com` shows which key was offered and why it was refused.

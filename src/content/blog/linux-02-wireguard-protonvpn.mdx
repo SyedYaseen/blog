@@ -1,0 +1,97 @@
+---
+title: "ProtonVPN over WireGuard, without the client"
+description: "Running a ProtonVPN config through plain wg-quick, then handing it to NetworkManager so it survives a reboot"
+date: "2025-05-12"
+tags: ["linux", "vpn", "wireguard"]
+---
+
+ProtonVPN ships a desktop client, but it is another daemon to keep running and
+it hides what is actually happening. WireGuard is already in the kernel, and
+Proton will hand you a plain `.conf` file — so you can skip the client entirely
+and let the OS do the work.
+
+Two ways to run it, and the difference matters:
+
+- **`wg-quick`** brings the tunnel up directly. Simple, scriptable, and the
+  right choice on a headless box.
+- **NetworkManager** takes the same config and makes it a normal connection you
+  can toggle from the desktop applet, with proper interaction with the rest of
+  your networking.
+
+I use `wg-quick` to confirm the config works, then import it into
+NetworkManager for daily use.
+
+## Get the config
+
+Download a WireGuard config from
+[account.protonvpn.com/downloads](https://account.protonvpn.com/downloads).
+Pick a server, and Proton generates a file holding your private key and that
+server's endpoint. Treat it like a password — it *is* your credentials.
+
+## Install
+
+```sh
+sudo apt update
+sudo apt install wireguard resolvconf
+```
+
+`resolvconf` is not optional. The config sets a `DNS =` line, and without
+something to apply it your queries keep going to your ISP's resolver while your
+traffic goes through the tunnel — a DNS leak, and the whole point of the
+exercise is gone.
+
+## Bring it up with wg-quick
+
+The interface takes its name from the filename, so rename the file to whatever
+you want to type.
+
+```sh
+mv ~/Downloads/proton-de-43.conf ~/protonvpn.conf
+sudo mv ~/protonvpn.conf /etc/wireguard/
+sudo chmod 600 /etc/wireguard/protonvpn.conf
+
+sudo wg-quick up protonvpn
+```
+
+The `chmod 600` is the important line — the file contains your private key and
+lands in `~/Downloads` world-readable.
+
+Check the tunnel and tear it down:
+
+```sh
+sudo wg                        # handshake time and transfer counters
+sudo wg-quick down protonvpn
+```
+
+A recent handshake and a non-zero `received` counter mean it is genuinely
+carrying traffic. If the handshake stays empty, the tunnel is up but nothing is
+getting through.
+
+To start it at boot:
+
+```sh
+sudo systemctl enable wg-quick@protonvpn
+sudo systemctl disable wg-quick@protonvpn
+```
+
+## Hand it to NetworkManager instead
+
+Bring the `wg-quick` tunnel *down* first — two things managing one interface
+ends badly.
+
+```sh
+sudo nmcli connection import type wireguard file /etc/wireguard/protonvpn.conf
+```
+
+An imported connection is owned by root, so it will not show up for your
+desktop user. Clearing the permissions makes it available to everyone on the
+machine:
+
+```sh
+sudo nmcli connection modify protonvpn connection.permissions ""
+sudo systemctl restart NetworkManager
+nmcli connection up protonvpn
+```
+
+That last restart is what makes the change visible to the applet. Without it
+`nmcli` reports success and the GUI keeps showing the old state.

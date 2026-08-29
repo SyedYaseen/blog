@@ -2,7 +2,8 @@ import type { Metadata, Site, Socials } from "@types";
 
 export const SITE: Site = {
   TITLE: "Yaseen",
-  DESCRIPTION: "Welcome to my blog",
+  DESCRIPTION:
+    "Notes from a developer who over-engineers things on purpose — web, embedded, machine learning, and a self-hosted homelab.",
   EMAIL: "hello@syedyaseen.dev",
   NUM_POSTS_ON_HOMEPAGE: 5,
   NUM_PROJECTS_ON_HOMEPAGE: 3,
@@ -10,18 +11,25 @@ export const SITE: Site = {
 
 export const HOME: Metadata = {
   TITLE: "Home",
-  DESCRIPTION: "Astro Micro is an accessible theme for Astro.",
+  DESCRIPTION:
+    "Yaseen writes about web tech, embedded systems, machine learning, and self-hosting — what worked, what broke, and what got fixed in prod.",
 };
 
 export const BLOG: Metadata = {
   TITLE: "Blog",
-  DESCRIPTION: "A collection of articles on topics I am passionate about.",
+  DESCRIPTION:
+    "Working notes on Linux, Docker, Rust, Raspberry Pi, and running your own infrastructure.",
 };
 
 export const PROJECTS: Metadata = {
   TITLE: "Projects",
   DESCRIPTION:
-    "A collection of my projects with links to repositories and live demos.",
+    "Things I have built, with links to the repositories and anything that is still running.",
+};
+
+export const TAGS: Metadata = {
+  TITLE: "Tags",
+  DESCRIPTION: "Browse posts by topic.",
 };
 
 export const SOCIALS: Socials = [
@@ -31,6 +39,6 @@ export const SOCIALS: Socials = [
   },
   {
     NAME: "GitLab",
-    HREF: "https://gitlab.com/syedyaseen"
+    HREF: "https://gitlab.com/syedyaseen",
   },
 ];

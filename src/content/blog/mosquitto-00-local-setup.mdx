@@ -1,14 +1,22 @@
 ---
-title: "Local docker compose MQTT(Mosquitto)"
-description: "Commands and a quick overview to setup local mosquitto server for pub sub"
+title: "A local MQTT broker with Mosquitto and Compose"
+description: "Running Mosquitto in Docker with password auth and self-signed TLS, and the config paths that have to line up"
 date: "2025-05-09"
-tags: ["pubsub", "MQTT", "Mosquitto"]
+tags: ["mqtt", "docker", "self-hosting"]
 ---
 
-## Docker compose setup:
+MQTT is the messaging layer I reach for whenever microcontrollers are involved
+— it is publish/subscribe, it is tiny, and an ESP32 can speak it comfortably.
+Mosquitto is the reference broker and runs happily in a container.
 
-Docker-Compose.yaml
-```
+Most of the difficulty in this setup is not conceptual. It is that the paths
+in `docker-compose.yaml`, the paths inside `mosquitto.conf`, and the paths in
+the `docker exec` commands all have to agree, and when they do not the broker
+starts anyway and simply refuses every connection.
+
+## Compose
+
+```yaml
 services:
   mosquitto:
     image: eclipse-mosquitto
@@ -16,102 +24,160 @@ services:
     container_name: mosquitto
     restart: unless-stopped
     ports:
-      - "1883:1883"
-      - "9001:9001"
+      - "1883:1883"   # plain MQTT
+      - "8883:8883"   # MQTT over TLS
     volumes:
-      # - ./:/etc/mosquitto
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - ./certs:/mosquitto/config/certs # If using certs
+      - ./certs:/mosquitto/config/certs
       - ./passwd:/mosquitto/config/passwd
       - ./data:/mosquitto/data
 ```
 
-### Config
-```
-cd ../desiredFolder
-nano mosquitto.conf
-```
+The `eclipse-mosquitto` image looks for everything under `/mosquitto/config`.
+Every path in the config file below is written from the container's point of
+view, not the host's.
 
-#### Paste following configs:
+Create `mosquitto.conf` and the empty `passwd` file **before** the first
+`docker compose up`. Docker creates a directory when a bind mount source does
+not exist, and the broker then fails on a config file that is a folder.
+
+## Config
+
+```
 log_dest stdout
 
 listener 1883
-listener 8883
 protocol mqtt
 
 allow_anonymous false
-password_file /etc/mosquitto/pwd
+password_file /mosquitto/config/passwd
+
 persistence false
-
-
-#### Password
-`nano passwd`
-Add `user:pwd` to file
-
-#### Use password
-1. Change permissions of pwd file for docker container
-`docker exec mosquitto chown root:root /etc/mosquitto/pwd`
-2. Encrypt password
-`docker exec mosquitto mosquitto_passwd -U /etc/mosquitto/pwd`
-
-### PubSub
-
 ```
+
+`log_dest stdout` is what makes `docker logs mosquitto` useful — the default
+writes to a file inside the container where you will not look at it.
+
+`allow_anonymous false` is the line that matters. The default is to accept
+anyone, and a broker on your LAN with no auth is an open door.
+
+## Passwords
+
+Put one `user:password` per line in `passwd`, in plain text, then have
+Mosquitto hash the file in place:
+
+```sh
+docker exec mosquitto chown root:root /mosquitto/config/passwd
+docker exec mosquitto mosquitto_passwd -U /mosquitto/config/passwd
+docker restart mosquitto
+```
+
+`-U` means "upgrade this file" — it reads the plaintext lines and rewrites them
+hashed. Run it once per new entry. If you run it against an already-hashed file
+nothing bad happens, it just does nothing.
+
+The `chown` is there because the broker refuses to read a password file that is
+writable by others, the same reasoning SSH applies to private keys.
+
+## Publish and subscribe
+
+```sh
 sudo apt install mosquitto-clients
+
 mosquitto_sub -v -t 'hello/topic' -u user -P pwd
-
-# sub with local ca.crt
-mosquitto_sub -h localhost -p 8883 \
-  --cafile ./mosq/certs/ca.crt \
-  -t 'hello/topic' \
-  -u hymn -P localpassword \
-  --insecure
-
-
 mosquitto_pub -t 'hello/topic' -m 'hello MQTT' -u user -P pwd
 ```
 
-## Self signed SSL certs
-```
+Run the subscriber in one terminal and the publisher in another. `-v` prints
+the topic alongside the payload, which is what you want the moment you have
+more than one topic in play.
+
+## Self-signed TLS
+
+Unencrypted MQTT sends the password in the clear. On a home network that may be
+an acceptable risk; if it is not, sign your own certificates.
+
+```sh
 cd mosquitto/certs
 
-# Generate CA
+# Certificate authority
 openssl genrsa -out ca.key 2048
 openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj "/CN=LocalMQTTCA"
 
-# Generate server key and CSR
+# Server key and signing request
 openssl genrsa -out server.key 2048
 openssl req -new -out server.csr -key server.key -subj "/CN=localhost"
 
-# Sign server cert with our CA
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 365
+# Sign the server cert with our own CA
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
+  -out server.crt -days 365
 ```
 
-- Add following to .conf
-cafile /mosquitto/config/certs/ca.crt
+The `CN` on the server certificate has to match the hostname clients connect
+to. `localhost` works for local testing; use the LAN hostname or IP if devices
+are connecting across the network, or the handshake fails on name mismatch.
+
+Add a TLS listener to the config:
+
+```
+listener 8883
+protocol mqtt
+
+cafile   /mosquitto/config/certs/ca.crt
 certfile /mosquitto/config/certs/server.crt
-keyfile /mosquitto/config/certs/server.key
+keyfile  /mosquitto/config/certs/server.key
 
 require_certificate false
+```
 
+Then connect with the CA file so the client can verify the chain:
 
-### Why require_certificate is set to false
-1. This setting controls whether the client must present a certificate.
-  - require_certificate false: The broker (Mosquitto) will use server-side TLS only, i.e. encrypted connection, but will not require the client to send a certificate.
-  - require_certificate true: The broker will do mutual TLS, i.e. require each client to present a valid certificate signed by the CA (used for very secure internal networks).
-2. Since most MQTT clients (like mqtt.js, IoT devices, etc.) don’t use client certs, we usually leave this as:
-  require_certificate false
-3. This still ensures encrypted connections, just without enforcing client certs.
+```sh
+mosquitto_sub -h localhost -p 8883 \
+  --cafile ./mosquitto/certs/ca.crt \
+  -t 'hello/topic' \
+  -u user -P pwd \
+  --insecure
+```
 
-### Why is rejectUnauthorized: false in the client?
-1. This tells the Node.js client not to reject self-signed or untrusted certificates.
-2. In your case, since you're using a self-signed CA, the certificate is not trusted by default (unlike Let's Encrypt certs). Node.js will reject such connections unless you:
-  - Provide the CA file with ca: fs.readFileSync(...)
-  - OR disable cert validation with rejectUnauthorized: false
-3. If you were using a cert signed by a public CA (e.g. Let's Encrypt), you'd omit rejectUnauthorized entirely.
-4. Best practice: Use ca and set rejectUnauthorized: true when deploying to production with real certs.
+### Why require_certificate is false
 
-### Debugging
+It controls whether the *client* must present a certificate:
 
-1. `docker exec mosquitto netstat -tuln` check if correct ports and protocol is present
-2. Temporarily set allow_anonymous true in mosquitto.conf
+- `false` — server-side TLS only. The connection is encrypted and the client
+  verifies the broker, but the broker identifies clients by username and
+  password.
+- `true` — mutual TLS. Every client needs its own certificate signed by the CA.
+  Genuinely more secure, and worth it on a locked-down internal network.
+
+Most MQTT clients — `mqtt.js`, off-the-shelf IoT devices — have no way to
+present a client certificate, so `false` is the practical setting. You still
+get encryption; you just are not using certificates for client identity.
+
+### Why rejectUnauthorized: false in a Node client
+
+This tells the Node.js client not to reject an untrusted certificate. Because
+the CA above is one you invented, nothing in the system trusts it by default,
+and Node refuses the connection. Two ways out:
+
+1. Pass the CA explicitly — `ca: fs.readFileSync('ca.crt')` — so the client can
+   verify the chain properly. **This is the one to use.**
+2. Set `rejectUnauthorized: false`, which skips verification entirely.
+
+Option 2 disables the check that stops someone impersonating your broker, so it
+is a debugging tool, not a setting. With a certificate from a real CA like
+Let's Encrypt you omit both and it just works.
+
+## Debugging
+
+Check the broker is listening on the ports you think it is:
+
+```sh
+docker exec mosquitto netstat -tuln
+docker logs mosquitto
+```
+
+If connections are being refused, temporarily set `allow_anonymous true` and
+retry. If it connects, the problem is the password file — wrong path, wrong
+permissions, or never hashed. If it still fails, the problem is networking or
+TLS, and you have halved the search space.

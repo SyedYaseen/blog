@@ -1,27 +1,77 @@
 ---
-title: "Llama cpp install"
-description: "Quick overview on setting up local llma cpp"
+title: "Getting llama.cpp to actually use the GPU"
+description: "Building llama-cpp-python against CUDA, and why every install path but one failed for me"
 date: "2025-05-09"
-tags: ["docker", "debugging"]
+tags: ["llm", "machine-learning", "python"]
 ---
 
-## Install local
-1. [CUDA local](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=24.04&target_type=deb_local)
-2. This forces reinstall and build llama cpp python with CUDA so that GPU can be used
-```
-CMAKE_ARGS="-DGGML_CUDA=on -DGGML_CUDA_FORCE_CUBLAS=on -DLLAVA_BUILD=off -DCMAKE_CUDA_ARCHITECTURES=native" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir --force-reinstall --upgrade
-```
-3. The only thing that worked outright was creating a new venv with conda and then installing llama cpp python lib. Every other option either failed to install or failed to GPU after install
+`pip install llama-cpp-python` succeeds almost immediately and gives you a
+CPU-only build. That is the trap: nothing errors, the model loads, and
+inference is just quietly ten times slower than it should be. Getting CUDA in
+there means compiling from source, and the flags are not optional.
 
-## Llama cpp cli
+## Install CUDA first
+
+Grab the toolkit from
+[NVIDIA's download page](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=24.04&target_type=deb_local)
+for your distro and version. Confirm it landed before going further — the build
+below fails in confusing ways if `nvcc` is missing:
+
+```sh
+nvcc --version
+nvidia-smi
 ```
+
+## Build the Python bindings against CUDA
+
+```sh
+CMAKE_ARGS="-DGGML_CUDA=on -DGGML_CUDA_FORCE_CUBLAS=on -DLLAVA_BUILD=off -DCMAKE_CUDA_ARCHITECTURES=native" \
+FORCE_CMAKE=1 \
+pip install llama-cpp-python --no-cache-dir --force-reinstall --upgrade
+```
+
+Taking the flags one at a time, since every one of them is there for a reason:
+
+- `GGML_CUDA=on` is the switch that actually enables GPU offload.
+- `CMAKE_CUDA_ARCHITECTURES=native` targets the card in *this* machine instead
+  of building for every architecture, which cuts the build time enormously.
+- `LLAVA_BUILD=off` skips the vision component. I do not use it, and it was a
+  reliable source of build failures.
+- `FORCE_CMAKE=1` and `--no-cache-dir` together stop pip from quietly handing
+  you the cached CPU-only wheel it built the first time. Without them you can
+  "rebuild" repeatedly and change nothing.
+
+### What actually worked
+
+I tried this several ways. System Python, `venv`, and `uv` all either failed to
+build or built successfully and then refused to touch the GPU at runtime. The
+only path that worked first time was a **fresh conda environment** — conda
+supplies its own CUDA runtime libraries, which is apparently what the build was
+missing.
+
+If you are fighting this, start with a clean conda env before debugging
+anything else. See [setting up a Python environment](/blog/ml-00-setuppythonenv)
+for that.
+
+To verify you got a GPU build, load a model and watch the startup log for
+layers being assigned to the device — or just watch `nvidia-smi` while it runs.
+
+## The CLI, from source
+
+The Python bindings are one thing; `llama.cpp` itself gives you a REPL that is
+useful for smoke-testing a model file before writing any code.
+
+```sh
 git clone https://github.com/ggml-org/llama.cpp.git
 cd llama.cpp
-mkdir build
-cd build
+
 cmake -B build
 cmake --build build --config Release
 
-llama-cli -m "mistral-7b-instruct-v0.1.Q2_K.gguf" -cnv
-
+./build/bin/llama-cli -m "mistral-7b-instruct-v0.1.Q2_K.gguf" -cnv
 ```
+
+`-cnv` starts it in conversation mode rather than raw completion. The `Q2_K` in
+that filename is the quantisation level — it is the smallest and least accurate
+of the useful ones, which makes it a good first download when you only want to
+know whether the pipeline works at all.

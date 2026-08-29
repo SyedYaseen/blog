@@ -1,109 +1,93 @@
 ---
-title: "Setup python virtual environment on linux"
-description: "Quick overview and useful commands to setup python env on an ubuntu machine"
+title: "A Python environment for ML work on Ubuntu"
+description: "Miniconda, one environment per project, and why I stopped committing pip freeze output"
 date: "2025-05-09"
-tags: ["python", "setup", "ML"]
+tags: ["python", "machine-learning", "linux"]
 ---
 
-## Installation
-``` sh
-# Create dir and install conda
+I use conda rather than `venv` for anything touching CUDA. Not out of loyalty —
+`venv` is lighter and I prefer it elsewhere — but conda installs its own CUDA
+runtime libraries alongside the Python packages, which is the difference
+between PyTorch finding the GPU and PyTorch shrugging. I lost an evening to
+that before giving in.
+
+Miniconda, not Anaconda: the full distribution ships hundreds of packages you
+will not use.
+
+## Install Miniconda
+
+```sh
 mkdir -p ~/miniconda3
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
 bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
 rm ~/miniconda3/miniconda.sh
+```
 
-# Add conda bin to PATH to run commands
+`-b` runs it unattended (no licence prompt to page through), and `-p` pins the
+install location so it does not sprawl into your home directory.
+
+## Put it on PATH
+
+```sh
 echo 'export PATH="$HOME/miniconda3/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
+```
 
-# Creat a venv
+## Create the environment
+
+```sh
 conda create --name envname python=3.11
 conda init
+```
 
-# Restart terminal for changes to take effect
+`conda init` writes the shell hook that makes `conda activate` work, and it
+only takes effect in a **new** shell. Restart the terminal here — this is the
+step that trips people up, because `conda activate` fails in the same session
+with an error that suggests the install went wrong.
+
+```sh
 conda activate envname
 ```
 
-## Packages
-Here's my requirements.txt I got by running `pip freeze > requirements.txt`.
-You can create a new file called requirements.txt. Run `pip install -r requirements.txt` to install.
+Pin the Python version explicitly. Letting conda pick means a different version
+per machine, and ML packages care about that far more than most.
 
-This contains additional packages like beautiful soup, selenium (web scraping) and fastapi as well incase you'd might use them.
+## Packages
+
+The stack I start most projects from:
+
+```sh
+# numerical / data
+pip install numpy pandas scipy matplotlib seaborn scikit-learn
+
+# deep learning — check pytorch.org for the right CUDA build
+pip install torch torchvision torchaudio
+
+# serving
+pip install fastapi uvicorn python-dotenv sqlalchemy psycopg2-binary
+
+# scraping
+pip install beautifulsoup4 selenium
 ```
-annotated-types==0.7.0
-anyio==4.9.0
-attrs==25.3.0
-beautifulsoup4==4.13.4
-certifi==2025.4.26
-click==8.1.8
-contourpy==1.3.2
-cycler==0.12.1
-fastapi==0.115.12
-filelock==3.13.1
-fonttools==4.57.0
-fsspec==2024.6.1
-greenlet==3.2.1
-h11==0.16.0
-httptools==0.6.4
-idna==3.10
-Jinja2==3.1.4
-joblib==1.4.2
-kiwisolver==1.4.8
-MarkupSafe==2.1.5
-matplotlib==3.10.1
-mpmath==1.3.0
-networkx==3.3
-numpy==2.2.5
-nvidia-cublas-cu12==12.8.3.14
-nvidia-cuda-cupti-cu12==12.8.57
-nvidia-cuda-nvrtc-cu12==12.8.61
-nvidia-cuda-runtime-cu12==12.8.57
-nvidia-cudnn-cu12==9.7.1.26
-nvidia-cufft-cu12==11.3.3.41
-nvidia-cufile-cu12==1.13.0.11
-nvidia-curand-cu12==10.3.9.55
-nvidia-cusolver-cu12==11.7.2.55
-nvidia-cusparse-cu12==12.5.7.53
-nvidia-cusparselt-cu12==0.6.3
-nvidia-nccl-cu12==2.26.2
-nvidia-nvjitlink-cu12==12.8.61
-nvidia-nvtx-cu12==12.8.55
-outcome==1.3.0.post0
-pandas==2.2.3
-pillow==11.2.1
-psycopg2-binary==2.9.10
-pydantic==2.11.4
-pydantic_core==2.33.2
-pyparsing==3.2.3
-PySocks==1.7.1
-python-dotenv==1.1.0
-pytz==2025.2
-PyYAML==6.0.2
-scikit-learn==1.6.1
-scipy==1.15.2
-seaborn==0.13.2
-selenium==4.31.0
-sniffio==1.3.1
-sortedcontainers==2.4.0
-soupsieve==2.7
-SQLAlchemy==2.0.40
-starlette==0.46.2
-sympy==1.13.3
-threadpoolctl==3.6.0
-torch==2.7.0+cu128
-torchaudio==2.7.0+cu128
-torchvision==0.22.0+cu128
-trio==0.30.0
-trio-websocket==0.12.2
-triton==3.3.0
-typing-inspection==0.4.0
-tzdata==2025.2
-urllib3==2.4.0
-uvicorn==0.34.2
-uvloop==0.21.0
-watchfiles==1.0.5
-websocket-client==1.8.0
-websockets==15.0.1
-wsproto==1.2.0
+
+Install `torch` from the index that matches your CUDA version rather than plain
+PyPI — [pytorch.org](https://pytorch.org/get-started/locally/) generates the
+command. The default wheel may not match the driver you have.
+
+### On pip freeze
+
+I used to paste `pip freeze > requirements.txt` output straight into these
+notes. It is the wrong artefact to share. `freeze` dumps the fully resolved
+tree, so you get eighty pinned lines including every `nvidia-cu12-*`
+transitive dependency, hardware-specific builds like `torch==2.7.0+cu128` that
+will not install on a machine with a different CUDA version, and no signal
+about which packages you actually asked for.
+
+Keep the list of things you chose. Let the resolver work out the rest:
+
+```sh
+pip install -r requirements.txt
 ```
+
+`pip freeze` still earns its keep for locking a deployment to an exact known
+state — just keep it as a separate lock file, not as the thing you read.
