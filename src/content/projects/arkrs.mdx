@@ -1,0 +1,56 @@
+---
+title: "Arkos"
+description: "An NFC story player for kids — tap a card, it plays. Rust firmware on a Pi Zero 2 W driving NFC, I2S audio and a round display"
+date: "2026-07-19"
+tags: ["rust", "raspberry-pi", "embedded", "async"]
+---
+
+A Yoto player, essentially, built because I wanted my son to be able to choose
+what he listens to without handing him a screen. Tap a physical NFC card on the
+box and it plays the playlist bound to that card. No app, no account, no
+scrolling.
+
+The interface is the card. That constraint drives everything else: there is no
+menu to get lost in, and a toddler can operate it without being able to read.
+
+## Hardware
+
+A Raspberry Pi Zero 2 W with three peripherals hanging off it:
+
+- **PN532** NFC reader — reads the cards.
+- **I2S DAC** — real audio out, rather than the Pi Zero's absent headphone jack.
+- **GC9A01** round SPI display — cover art and playback state.
+
+The NFC reader and the display share SPI0 on separate chip-select lines, with
+the I2S audio on its own pins. The full pinout is in the repo's readme; getting
+three devices onto one bus without them interfering was a decent chunk of the
+early work.
+
+## Software
+
+Rust throughout — `arkrs` is one binary that runs the hardware event loop *and*
+serves a React SPA for managing cards, playlists and uploaded media. axum on
+tokio for HTTP, sqlx and SQLite for state, `rppal` for GPIO.
+
+The build has a `stub` feature on by default that fakes the NFC reader, so the
+whole thing runs on a laptop with no hardware attached. Developing embedded
+software against real hardware on every iteration is miserable, and a Pi Zero
+2 W is slow to compile on. Cross-compiling for release and stubbing for
+development was the change that made this project pleasant to work on.
+
+```sh
+cargo run                                      # stub hardware, on any machine
+cargo build --release --no-default-features    # real peripherals, for the Pi
+```
+
+## Status
+
+Working prototype. It reads cards, plays audio, and drives the display. The
+device-side pieces are solid; what is missing is everything a non-technical
+person would need — a pairing flow, first-run setup, and transport controls in
+the UI, which is currently read-only.
+
+There is an earlier Python prototype of the same idea in a separate repo. The
+rewrite was not really about performance — it was about a long-running device
+process that has to survive a loose SPI connection without dying, and Rust's
+error handling being harder to shrug off than a bare `except`.

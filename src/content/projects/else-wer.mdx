@@ -1,0 +1,61 @@
+---
+title: "else-wer"
+description: "A self-hosted audiobook server in Rust with a PWA frontend, small enough to run on a Pi Zero"
+date: "2026-07-28"
+tags: ["rust", "self-hosting", "raspberry-pi", "docker"]
+repoURL: "https://github.com/SyedYaseen/else-wer-server"
+---
+
+Audiobookshelf is good software and I used it happily until I tried to run it
+on a Pi Zero 2 W. The Node runtime plus the library scanner is more than
+512 MB of RAM wants to give, and the box spent most of its time swapping.
+
+So else-wer is the subset I actually use, written in Rust: point it at a
+library directory, run it in Docker, stream to any browser. The frontend is a
+PWA, so it installs to a phone home screen without going near an app store.
+
+## What it does
+
+- Library scanning with metadata extraction — [`lofty`](https://docs.rs/lofty)
+  for tags, [`symphonia`](https://docs.rs/symphonia) for decoding, so it reads
+  m4b, mp3, and the rest without shelling out to ffmpeg.
+- Per-user playback position sync, which is the whole reason to run a server
+  rather than copying files to a phone.
+- Multi-user accounts with admin roles, Argon2 password hashing, JWT sessions.
+- Cover art and file organisation tools.
+
+The stack is axum on tokio with SQLite through sqlx. SQLite because the
+workload is one household of listeners — Postgres would be a second container
+to keep alive for no benefit.
+
+## Running it
+
+```sh
+cp .env.docker.example .env.docker
+openssl rand -hex 32          # put this in JWT_SECRET
+
+mkdir -p audiobooks           # your library goes here
+docker compose up -d
+```
+
+It serves on port 3000. Two volumes: a named `else-wer-data` for the database,
+signing key and cover art, and a bind mount for the library itself.
+
+Migrations run on container startup, so upgrading is `docker compose pull &&
+docker compose up -d` with no manual step.
+
+## HTTPS, because iOS insists
+
+iOS will not register a service worker over plain HTTP, which means no PWA
+install and no offline behaviour. Getting a real certificate onto a device on
+your home network, with no public domain and no port forwarding, turns out to
+be the fiddliest part of the whole project — the repo has a DuckDNS +
+Let's Encrypt + Caddy setup under `deploy/https-duckdns/` that does it in about
+five minutes.
+
+## Hardware
+
+A Pi Zero 2 W with a USB SSD for the library. The SD card holds the OS only —
+audiobooks on an SD card wear it out and seek too slowly to scrub comfortably.
+The fstab entry that keeps the SSD mounted across reboots is in
+[mounting a drive at a path that stays put](/blog/linux-03-mountdrives).

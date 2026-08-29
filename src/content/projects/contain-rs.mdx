@@ -1,0 +1,57 @@
+---
+title: "contain_rs"
+description: "A rootless Linux container runtime written from scratch in Rust, to find out what runc actually does at the syscall level"
+date: "2026-08-02"
+tags: ["rust", "linux", "docker"]
+repoURL: "https://github.com/SyedYaseen/contain_rs"
+---
+
+"A container is just a process with some namespaces" is the kind of thing you
+can repeat for years without it meaning anything. So this is `runc` rebuilt
+from the bottom, with no container library doing the work — every namespace,
+mount and syscall written out by hand.
+
+It is a **scoped learning project with a defined finish line**, not an attempt
+at another podman. There are five acceptance checks in the repo; when they pass
+it gets tagged v1.0 and I stop.
+
+## What works
+
+Seven namespaces created in a single `clone(2)` call — mount, network, PID,
+UTS, user, cgroup and IPC. Then, in order:
+
+- **uid/gid mapping** through a parent↔child pipe handshake, so the process is
+  root inside the container and my unprivileged user outside it.
+- **`pivot_root`** done properly: private mount propagation, bind-mount onto
+  itself, then `umount2(MNT_DETACH)` and `rmdir` of the old root. Most of the
+  subtlety in this project lives in that sequence.
+- **cgroup v2, rootless**, via `systemd-run --user --scope -p Delegate=yes`,
+  with `memory.max`, `cpu.max` and `pids.max` written straight to cgroupfs.
+- **Capability dropping** — bounding set cleared, ambient set raised, and
+  `no_new_privs` set before `execve`.
+- **Seccomp** through [`seccompiler`](https://docs.rs/seccompiler) (the
+  rust-vmm/Firecracker crate): a default-deny allowlist compiled to BPF and
+  applied with a raw `seccomp()` call, with no libseccomp C dependency.
+- **Exit codes that propagate** — a normal exit passes through, and a signal
+  death, including seccomp's own `SIGSYS` kill, maps to `128 + signal`.
+
+```sh
+cargo run -- --rootfs ./cont_fs -- /bin/sh
+```
+
+That drops you into an isolated Alpine shell with enforced memory, CPU and PID
+limits and a syscall filter.
+
+## What it cannot do
+
+No `/dev`, `/dev/pts` or `/sys` inside the container — only `/proc` is mounted.
+Cleanup after a crash or early exit is not yet guaranteed, which is one of the
+acceptance checks still outstanding.
+
+## Why bother
+
+The payoff is not the binary. It is that container behaviour stops being
+magic: why rootless containers need a uid map at all, why `pivot_root` is not
+`chroot`, and why a seccomp violation kills a process with a signal rather than
+an error return. Reading about namespaces did not do that; getting `EINVAL`
+from `pivot_root` for an afternoon did.
