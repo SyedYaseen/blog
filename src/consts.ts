@@ -24,7 +24,7 @@ export const BLOG: Metadata = {
 export const PROJECTS: Metadata = {
   TITLE: "Projects",
   DESCRIPTION:
-    "Things I have built, with links to the repositories and anything that is still running.",
+    "Things I have built. Some are open source; the ones I am turning into products are not.",
 };
 
 export const TAGS: Metadata = {

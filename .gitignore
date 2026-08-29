@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # local planning notes, not for publication
 TODO.local.md
+
+# pagefind search index — generated into dist/ at build time
+public/pagefind/
